@@ -1,0 +1,41 @@
+{
+  "name": "Don Gato · App móvil",
+  "short_name": "Don Gato",
+  "description": "App móvil de la Clínica Veterinaria & SPA Don Gato — Dr. Jorge Castillo MVZ.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#0e0612",
+  "theme_color": "#6b2d6b",
+  "lang": "es",
+  "categories": ["health", "lifestyle"],
+  "icons": [
+    {
+      "src": "../Img/LOGO DE DON GATO sin fondo.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "../Img/LOGO DE DON GATO sin fondo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Catálogo",
+      "short_name": "Catálogo",
+      "description": "Ver servicios veterinarios",
+      "url": "./index.html"
+    },
+    {
+      "name": "WhatsApp",
+      "short_name": "WA",
+      "description": "Contactar al Dr. Castillo",
+      "url": "https://wa.me/59167301341"
+    }
+  ]
+}

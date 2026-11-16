@@ -1,0 +1,273 @@
+﻿<!DOCTYPE html>
+<html lang="es" data-default-theme="dark" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#6b2d6b">
+  <meta name="description" content="App móvil de Clínica Veterinaria & SPA Don Gato.">
+  <title>🐾 Don Gato · App móvil</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" type="image/png" href="../Img/LOGO DE DON GATO sin fondo.png">
+  <link rel="stylesheet" href="../../../shared/base.css">
+  <link rel="stylesheet" href="estilos.css">
+  <script>
+    (function () {
+      try {
+        var t = localStorage.getItem('dw2-theme') || document.documentElement.dataset.defaultTheme || 'dark';
+        document.documentElement.dataset.theme = t;
+      } catch (e) { document.documentElement.dataset.theme = 'dark'; }
+    })();
+  </script>
+</head>
+<body class="vet-pwa">
+
+  <div class="pwa-shell">
+
+    <header class="pwa-topbar">
+      <a href="#pwa-inicio" class="pwa-brand" data-view-go="pwa-inicio">
+        <span class="pwa-brand-logo">
+          <img src="../Img/LOGO DE DON GATO sin fondo.png" alt="Don Gato" onerror="window.App&amp;&amp;App.imgFallback(this,'🐱')">
+        </span>
+        <span>
+          <strong>Don Gato</strong>
+          <small>Clínica Veterinaria &amp; SPA</small>
+        </span>
+      </a>
+      <div class="pwa-top-actions">
+        <button type="button" class="btn btn-icon btn-ghost" data-theme-toggle aria-label="Cambiar tema">
+          <span class="theme-icon">☀️</span>
+        </button>
+        <button type="button" id="pwaCuentaBtn" class="btn btn-primary btn-sm" data-open-modal="pwaCuentaModal">👤 Cuenta</button>
+      </div>
+    </header>
+
+    <main class="pwa-main">
+
+      <section id="pwa-inicio" class="view active">
+        <div class="pwa-hero">
+          <div class="pwa-hero-logo">
+            <img src="../Img/LOGO DE DON GATO sin fondo.png" alt="Don Gato" onerror="window.App&amp;&amp;App.imgFallback(this,'🐱')">
+          </div>
+          <span class="vet-badge">🐾 Dr. Jorge Castillo · MVZ</span>
+          <h1>Don Gato</h1>
+          <p class="pwa-hero-sub">Clínica Veterinaria &amp; SPA</p>
+          <p class="pwa-hero-text">Atención médica, cirugías, peluquería, petshop y farmacia con amor por tu mascota.</p>
+          <p class="pwa-address">📍 Miraflores, Av. Pasoskanqui esq. Brasil #1627 · La Paz</p>
+
+          <form id="pwaAliasForm" class="pwa-alias" autocomplete="off">
+            <label for="pwaAliasInput">Tu alias de tutor</label>
+            <div class="row">
+              <input id="pwaAliasInput" class="input" type="text" maxlength="40" placeholder="Ej: Andrea y Michi">
+              <button class="btn btn-accent" type="submit">Guardar</button>
+            </div>
+            <p class="small muted">Identificado como: <strong id="pwaAliasDisplay">Invitado</strong></p>
+          </form>
+
+          <div class="pwa-quick-grid">
+            <button type="button" class="pwa-quick" data-view-go="pwa-catalogo"><span>📋</span>Catálogo</button>
+            <button type="button" class="pwa-quick" data-view-go="pwa-carrito"><span>🛒</span>Cotizador</button>
+            <button type="button" class="pwa-quick" data-view-go="pwa-citas"><span>📅</span>Citas</button>
+            <a class="pwa-quick" href="../index.html"><span>💻</span>Versión laptop</a>
+          </div>
+        </div>
+
+        <div class="pwa-card">
+          <div class="row-between">
+            <div>
+              <h2 class="pwa-section-title">Recomendados</h2>
+              <p class="small muted">Los servicios más solicitados esta semana.</p>
+            </div>
+            <button type="button" class="btn btn-ghost btn-xs" data-view-go="pwa-catalogo">Ver todo →</button>
+          </div>
+          <div id="pwaDestacados" class="pwa-destacados"></div>
+        </div>
+
+        <div class="pwa-card pwa-info-grid">
+          <div><strong id="pwaStatTotal">23</strong><span>servicios</span></div>
+          <div><strong>5</strong><span>áreas</span></div>
+          <div><strong>BOB</strong><span>precios</span></div>
+        </div>
+      </section>
+
+      <section id="pwa-catalogo" class="view">
+        <div class="pwa-card">
+          <h2 class="pwa-section-title">Catálogo</h2>
+          <input id="pwaBusqueda" class="input" type="search" placeholder="🔍 Buscar servicio o producto…" autocomplete="off">
+          <div id="pwaFiltros" class="chips pwa-chips"></div>
+          <p id="pwaResultInfo" class="small muted" aria-live="polite"></p>
+        </div>
+        <div id="pwaGrid" class="pwa-grid"></div>
+      </section>
+
+      <section id="pwa-carrito" class="view">
+        <div class="pwa-card">
+          <div class="row-between">
+            <h2 class="pwa-section-title">Tu cotizador</h2>
+            <button type="button" id="pwaClearCart" class="btn btn-danger btn-xs">Vaciar</button>
+          </div>
+          <ul id="pwaCartList" class="pwa-cart-list"></ul>
+          <div class="vet-total-row"><span>Total estimado</span><strong id="pwaCartTotal">0 BOB</strong></div>
+          <div class="stack mt-2">
+            <button type="button" id="pwaConfirm" class="btn btn-primary btn-block">📋 Generar resumen</button>
+            <button type="button" id="pwaWhatsapp" class="btn btn-wa btn-block">💬 Enviar por WhatsApp</button>
+          </div>
+        </div>
+
+        <div class="pwa-card">
+          <h2 class="pwa-section-title">Datos del paciente</h2>
+          <div class="stack">
+            <div class="field">
+              <label for="pwaPet">Mascota</label>
+              <input id="pwaPet" class="input" type="text" maxlength="40" placeholder="Ej: Bigotes">
+            </div>
+            <div class="row">
+              <div class="field grow">
+                <label for="pwaSpecies">Especie</label>
+                <select id="pwaSpecies" class="select">
+                  <option value="Gato">🐱 Gato</option>
+                  <option value="Perro">🐶 Perro</option>
+                  <option value="Otro">🐾 Otro</option>
+                </select>
+              </div>
+              <div class="field grow">
+                <label for="pwaPhone">Celular</label>
+                <input id="pwaPhone" class="input" type="tel" maxlength="15" placeholder="67301341">
+              </div>
+            </div>
+            <div class="field">
+              <label for="pwaOwner">Tutor</label>
+              <input id="pwaOwner" class="input" type="text" maxlength="60" placeholder="Tu nombre">
+            </div>
+          </div>
+          <p id="pwaPatientError" class="form-error" role="alert"></p>
+        </div>
+      </section>
+
+      <section id="pwa-citas" class="view">
+        <div class="pwa-card">
+          <h2 class="pwa-section-title">Agendar cita</h2>
+          <form id="pwaCitaForm" class="stack" novalidate>
+            <div class="field"><label for="pwaCitaTutor">Tutor *</label><input id="pwaCitaTutor" class="input" type="text" maxlength="60" placeholder="Nombre completo"></div>
+            <div class="field"><label for="pwaCitaMascota">Mascota *</label><input id="pwaCitaMascota" class="input" type="text" maxlength="40" placeholder="Ej: Michi"></div>
+            <div class="field"><label for="pwaCitaCelular">Celular (8 dígitos) *</label><input id="pwaCitaCelular" class="input" type="tel" inputmode="numeric" maxlength="8" placeholder="67301341"></div>
+            <div class="field"><label for="pwaCitaFecha">Fecha preferida *</label><input id="pwaCitaFecha" class="input" type="date"></div>
+            <div class="field">
+              <label for="pwaCitaServicio">Servicio</label>
+              <select id="pwaCitaServicio" class="select">
+                <option value="Consulta General">🩺 Consulta general (30 BOB)</option>
+                <option value="Peluquería & SPA">✂️ Peluquería &amp; SPA (80 BOB)</option>
+                <option value="Cirugía / Esterilización">🏥 Cirugía / Esterilización</option>
+                <option value="Ecografía">🔬 Ecografía (60 BOB)</option>
+                <option value="Limpieza Dental">🦷 Limpieza dental (180 BOB)</option>
+                <option value="Vacunación / Desparasitación">💉 Vacunación</option>
+              </select>
+            </div>
+            <div class="field"><label for="pwaCitaNotas">Notas</label><textarea id="pwaCitaNotas" class="textarea" maxlength="300" placeholder="¿Qué necesita tu mascota?"></textarea></div>
+            <p id="pwaCitaError" class="form-error" role="alert"></p>
+            <button type="submit" class="btn btn-primary btn-block">📅 Solicitar cita</button>
+          </form>
+        </div>
+        <div class="pwa-card pwa-contact">
+          <h3 class="pwa-section-title">Contacto directo</h3>
+          <a class="btn btn-wa btn-block" href="https://wa.me/59167301341" target="_blank" rel="noopener">💬 WhatsApp 67301341</a>
+          <a class="btn btn-ghost btn-block" href="mailto:jcastillo.vet@gmail.com">✉️ jcastillo.vet@gmail.com</a>
+        </div>
+      </section>
+
+      <section id="pwa-bitacora" class="view admin-only">
+        <div class="pwa-card">
+          <div class="row-between">
+            <div>
+              <h2 class="pwa-section-title">📜 Bitácoras</h2>
+              <p class="small muted">Solo administrador · actividad de la app y de la web.</p>
+            </div>
+            <button type="button" id="pwaClearLogs" class="btn btn-danger btn-xs">Limpiar</button>
+          </div>
+          <div class="kpi-grid pwa-kpis">
+            <div class="kpi"><span class="kpi-label">Ventas</span><strong class="kpi-value" id="pwaKpiVentas">0 BOB</strong></div>
+            <div class="kpi"><span class="kpi-label">Eventos</span><strong class="kpi-value" id="pwaKpiEventos">0</strong></div>
+            <div class="kpi"><span class="kpi-label">Ítems</span><strong class="kpi-value" id="pwaKpiItems">0</strong></div>
+          </div>
+        </div>
+        <div class="pwa-card">
+          <h3 class="pwa-section-title">📋 Eventos</h3>
+          <div id="pwaLogEventos" class="log-box"></div>
+        </div>
+        <div class="pwa-card">
+          <h3 class="pwa-section-title">💰 Ventas</h3>
+          <div id="pwaLogVentas" class="log-box"></div>
+        </div>
+      </section>
+
+    </main>
+
+    <nav class="pwa-dock" aria-label="Navegación de la app">
+      <button type="button" class="dock-item active" data-view-go="pwa-inicio"><span>🏠</span>Inicio</button>
+      <button type="button" class="dock-item" data-view-go="pwa-catalogo"><span>📋</span>Catálogo</button>
+      <button type="button" class="dock-item" data-view-go="pwa-carrito"><span>🛒</span>Cotizador</button>
+      <button type="button" class="dock-item" data-view-go="pwa-citas"><span>📅</span>Citas</button>
+      <button type="button" id="pwaDockBitacora" class="dock-item hidden" data-view-go="pwa-bitacora"><span>📜</span>Bitácora</button>
+    </nav>
+
+  </div>
+
+  <div id="pwaDetailModal" class="modal" aria-hidden="true">
+    <div class="modal-card" role="dialog" aria-modal="true">
+      <div class="modal-head">
+        <div>
+          <span id="pwaDetailCat" class="badge accent">Categoría</span>
+          <h3 id="pwaDetailName" class="modal-title mt-1">Servicio</h3>
+        </div>
+        <button type="button" class="modal-close" data-close-modal aria-label="Cerrar">✕</button>
+      </div>
+      <div class="modal-media">
+        <img id="pwaDetailImg" src="" alt="Servicio" onerror="window.App&amp;&amp;App.imgFallback(this,'🐾')">
+      </div>
+      <p id="pwaDetailDesc" class="muted mt-1"></p>
+      <p id="pwaDetailNota" class="small muted mt-1"></p>
+      <div class="vet-total-row mt-2"><span>Precio</span><strong id="pwaDetailPrice">0 BOB</strong></div>
+      <button type="button" id="pwaDetailAdd" class="btn btn-primary btn-block mt-2">+ Añadir al cotizador</button>
+    </div>
+  </div>
+
+  <div id="pwaCuentaModal" class="modal" aria-hidden="true">
+    <div class="modal-card compact" role="dialog" aria-modal="true">
+      <div class="modal-head">
+        <div><h3 class="modal-title">Mi cuenta</h3><p class="modal-sub">Tutor o administrador.</p></div>
+        <button type="button" class="modal-close" data-close-modal aria-label="Cerrar">✕</button>
+      </div>
+      <form id="pwaClientForm" class="stack" autocomplete="off">
+        <div class="field"><label for="pwaClientAlias">Alias de tutor</label><input id="pwaClientAlias" class="input" type="text" maxlength="40" placeholder="Ej: Andrea y Michi"></div>
+        <button class="btn btn-accent btn-block" type="submit">🐾 Guardar alias</button>
+      </form>
+      <hr class="divider">
+      <form id="pwaAdminForm" class="stack" autocomplete="off">
+        <div class="field"><label for="pwaAdminUser">Usuario</label><input id="pwaAdminUser" class="input" type="text" maxlength="30" placeholder="admin"></div>
+        <div class="field"><label for="pwaAdminPass">Contraseña</label><input id="pwaAdminPass" class="input" type="password" maxlength="40" placeholder="••••••••"></div>
+        <p id="pwaAdminError" class="form-error" role="alert"></p>
+        <button class="btn btn-primary btn-block" type="submit">🔐 Entrar como admin</button>
+        <p class="small muted">Práctica: <strong>admin / admin123</strong> o <strong>vet2026</strong>.</p>
+      </form>
+      <button type="button" id="pwaAdminLogout" class="btn btn-danger btn-block hidden mt-1">🚪 Cerrar sesión admin</button>
+    </div>
+  </div>
+
+  <div id="pwaResumenModal" class="modal" aria-hidden="true">
+    <div class="modal-card" role="dialog" aria-modal="true">
+      <div class="modal-head">
+        <div><h3 class="modal-title">Resumen de cotización</h3><p class="modal-sub">Listo para enviar.</p></div>
+        <button type="button" class="modal-close" data-close-modal aria-label="Cerrar">✕</button>
+      </div>
+      <div id="pwaResumenBody"></div>
+      <div class="modal-foot">
+        <button type="button" class="btn btn-ghost" data-close-modal>Volver</button>
+        <button type="button" id="pwaResumenWa" class="btn btn-wa">💬 WhatsApp</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="../../../shared/core.js"></script>
+  <script src="../JS/data.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>
