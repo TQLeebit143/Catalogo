@@ -30,50 +30,77 @@ $(function () {
   });
 
   const abrirModalSeguro = (selector) => {
-    if (core.abrirModal) {
-      core.abrirModal(selector);
-      return;
-    }
     const $modal = $(selector);
-    if ($modal.length) {
-      $modal.addClass('open').attr('aria-hidden', 'false');
-      document.body.style.overflow = 'hidden';
-    }
+    if (!$modal.length) return;
+    $modal.addClass('open').attr('aria-hidden', 'false');
+    document.body.style.overflow = 'hidden';
   };
 
   const cerrarModalSeguro = (selector) => {
-    if (core.cerrarModal) {
-      core.cerrarModal(selector);
-      return;
-    }
     const $modal = selector ? $(selector) : $('.modal.open, .modal[aria-hidden="false"]');
     $modal.removeClass('open').attr('aria-hidden', 'true');
-    document.body.style.overflow = '';
+    if (!$('.modal.open, .modal[aria-hidden="false"]').length) {
+      document.body.style.overflow = '';
+    }
   };
 
-  $(document).on('click', '[data-open-modal]', function (e) {
+  $(document).off('click.vetModalOpen').on('click.vetModalOpen', '[data-open-modal]', function (e) {
     e.preventDefault();
-    const id = $(this).data('openModal');
+    e.stopImmediatePropagation();
+    const id = $(this).attr('data-open-modal');
     if (id) abrirModalSeguro('#' + id);
   });
 
-  $(document).on('click', '[data-close-modal]', function (e) {
+  $(document).off('click.vetModalClose').on('click.vetModalClose', '[data-close-modal]', function (e) {
     e.preventDefault();
+    e.stopImmediatePropagation();
     cerrarModalSeguro($(this).closest('.modal'));
   });
 
-  $(document).on('click', '.modal', function (e) {
+  $(document).off('click.vetModalBackdrop').on('click.vetModalBackdrop', '.modal', function (e) {
     if (e.target === this) cerrarModalSeguro(this);
   });
 
-  $(document).on('keydown', function (e) {
+  $(document).off('keydown.vetModalEsc').on('keydown.vetModalEsc', function (e) {
     if (e.key === 'Escape') cerrarModalSeguro();
   });
 
   /* ==========================================================================
-     2. CONFIGURACIÓN, CATÁLOGO (CON RESPALDO INTEGRADO) Y CONSTANTES
+     2. CONFIGURACIÓN, CATÁLOGO (23 SERVICIOS CON IMÁGENES REALES) Y CONSTANTES
      ========================================================================== */
- const CATALOGO_RESPALDO = [
+  const MAPA_IMAGENES = [
+    { match: /arena/i, file: 'Img/arena sanitaria.jpg' },
+    { match: /^ba[nñ]o/i, file: 'Img/bano.jpg' },
+    { match: /castraci[oó]n.*gato|gato.*castraci[oó]n/i, file: 'Img/castracion gatos.jpg' },
+    { match: /castraci[oó]n.*perro|perro.*castraci[oó]n/i, file: 'Img/castracion perro.jpg' },
+    { match: /cepillo/i, file: 'Img/cepillo mascota.jpg' },
+    { match: /collar|gps/i, file: 'Img/collar gps.jpg' },
+    { match: /consulta/i, file: 'Img/consulta.jpg' },
+    { match: /u[nñ]a/i, file: 'Img/corte unas.jpg' },
+    { match: /^corte\b/i, file: 'Img/corte.jpg' },
+    { match: /crema|pomada/i, file: 'Img/cremas.jpg' },
+    { match: /ecograf/i, file: 'Img/ecografia.jpg' },
+    { match: /esterilizaci[oó]n.*gat|gat.*esterilizaci[oó]n/i, file: 'Img/estirilizacion gatas.jpg' },
+    { match: /esterilizaci[oó]n.*perr|perr.*esterilizaci[oó]n/i, file: 'Img/estirilizacion perras.jpg' },
+    { match: /eutanasia/i, file: 'Img/eutanasia.jpg' },
+    { match: /fluidoterapia|suero/i, file: 'Img/fluidoterapia.jpg' },
+    { match: /inyect|vacun|desparasit/i, file: 'Img/inyectable.jpg' },
+    { match: /jarabe/i, file: 'Img/jarabes.jpg' },
+    { match: /dental|diente/i, file: 'Img/limpieza dental.jpg' },
+    { match: /peluquer[ií]a.*gat|gat.*peluquer[ií]a/i, file: 'Img/peluqueria gato.jpg' },
+    { match: /peluquer[ií]a/i, file: 'Img/peluqueria.jpg' },
+    { match: /^shampoo|^champ[uú]/i, file: 'Img/shampoo.jpg' },
+    { match: /tableta|pastilla|comprimido/i, file: 'Img/tabletas.jpg' },
+    { match: /intravenos|v[ií]a/i, file: 'Img/via intravenosa.jpg' }
+  ];
+
+  const resolverImagenServicio = (nombre, imagenActual) => {
+    const encontrada = MAPA_IMAGENES.find((regla) => regla.match.test(String(nombre || '')));
+    if (encontrada) return encontrada.file;
+    return imagenActual || 'Img/consulta.jpg';
+  };
+
+  const CATALOGO_RESPALDO = [
     // PELUQUERÍA & SPA
     { id: 'pel-1', categoria: 'peluqueria', nombre: 'Baño Medicado y Secado', precio: 60, descripcion: 'Baño dermatológico con shampoo hipoalergénico, secado suave y cepillado.', nota: 'Ideal para piel sensible o alergias.', imagen: 'Img/bano.jpg' },
     { id: 'pel-2', categoria: 'peluqueria', nombre: 'Peluquería & SPA Completo', precio: 80, descripcion: 'Corte higiénico o de raza, baño relajante, limpieza de oídos y corte de uñas.', nota: 'Incluye aromaterapia suave.', imagen: 'Img/peluqueria.jpg' },
@@ -297,7 +324,7 @@ $(function () {
     actualizarBotonVista(true);
   }
 
-  $('#btnSimularVista').on('click', function () {
+  $('#btnSimularVista').off('click.vetVista').on('click.vetVista', function () {
     const activo = document.body.classList.toggle('vista-movil-simulada');
     localStorage.setItem(STORAGE.vistaSimulada, activo ? '1' : '0');
     actualizarBotonVista(activo);
@@ -322,30 +349,56 @@ $(function () {
     activarVista(seccionActual, false);
   });
 
-  $(document).on('click', '[data-vista-target]', function (e) {
-    const target = $(this).data('vistaTarget');
+  $(document).off('click.vetNavTarget').on('click.vetNavTarget', '[data-vista-target]', function (e) {
+    const target = $(this).attr('data-vista-target');
     if (!target) return;
     e.preventDefault();
     activarVista(target, true);
   });
 
   /* ==========================================================================
-     5. TEMA OSCURO/CLARO, PWA, ESTADO DE RED Y SERVICE WORKER
+     5. TEMA OSCURO / CLARO SINCRONIZADO, PWA Y RED
      ========================================================================== */
   const aplicarTemaLocal = (tema) => {
     const valido = tema === 'light' ? 'light' : 'dark';
     document.documentElement.setAttribute('data-theme', valido);
+    document.documentElement.style.colorScheme = valido;
+    document.body.setAttribute('data-theme', valido);
     localStorage.setItem('dw2-theme', valido);
-    const $icon = $('#themeBtn .theme-icon');
-    if ($icon.length) $icon.text(valido === 'dark' ? '☀️' : '🌙');
+
+    const metaTheme = document.querySelector('meta[name="theme-color"]');
+    if (metaTheme) {
+      metaTheme.setAttribute('content', valido === 'light' ? '#f5ecfa' : '#6b2d6b');
+    }
+
+    const $btn = $('#themeBtn');
+    if ($btn.length) {
+      $btn.attr('aria-label', valido === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro');
+      $btn.attr('title', valido === 'dark' ? 'Cambiar a modo día' : 'Cambiar a modo noche');
+      $btn.find('.theme-icon').text(valido === 'dark' ? '☀️' : '🌙');
+    }
   };
 
-  aplicarTemaLocal(localStorage.getItem('dw2-theme') || document.documentElement.getAttribute('data-theme') || 'dark');
+  const btnTemaNodo = document.getElementById('themeBtn');
+  if (btnTemaNodo) {
+    const btnTemaLimpio = btnTemaNodo.cloneNode(true);
+    btnTemaLimpio.removeAttribute('data-theme-toggle');
+    btnTemaNodo.parentNode.replaceChild(btnTemaLimpio, btnTemaNodo);
+  }
 
-  $('#themeBtn').on('click', function () {
+  aplicarTemaLocal(
+    localStorage.getItem('dw2-theme') ||
+    document.documentElement.getAttribute('data-theme') ||
+    'dark'
+  );
+
+  $('#themeBtn').on('click', function (e) {
+    e.preventDefault();
+    e.stopImmediatePropagation();
     const actual = document.documentElement.getAttribute('data-theme');
     const nuevo = actual === 'dark' ? 'light' : 'dark';
     aplicarTemaLocal(nuevo);
+    mostrarToast(nuevo === 'dark' ? '🌙 Modo Noche activado' : '☀️ Modo Día activado');
     registrarBitacora('Cambio de tema', nuevo === 'dark' ? 'Modo Oscuro' : 'Modo Claro');
   });
 
@@ -358,7 +411,11 @@ $(function () {
         .toggleClass('is-offline', !online);
     }
     if (online && window.SupabaseDW2 && typeof window.SupabaseDW2.sincronizar === 'function') {
-      window.SupabaseDW2.sincronizar().catch(() => {});
+      window.SupabaseDW2.sincronizar().then((res) => {
+        if (res && res.enviados > 0) {
+          mostrarToast(`☁️ Sincronizados ${res.enviados} registro(s) pendientes con Supabase`);
+        }
+      }).catch(() => {});
     }
   };
 
@@ -423,7 +480,7 @@ $(function () {
     }
   });
 
-  $('#burguerBtn').on('click', function () {
+  $('#burguerBtn').off('click.vetBurger').on('click.vetBurger', function () {
     const $nav = $('#vetMobileNav');
     const abierto = $nav.is(':visible');
     $nav.slideToggle(180);
@@ -559,8 +616,8 @@ $(function () {
   });
 
   $('#vetGrid').on('click', '[data-action]', function () {
-    const accion = $(this).data('action');
-    const id = $(this).data('id');
+    const accion = $(this).attr('data-action');
+    const id = $(this).attr('data-id');
     const item = CATALOGO.find((x) => x.id === id);
     if (!item) return;
 
@@ -650,8 +707,8 @@ $(function () {
   };
 
   $('#vetCartList').on('click', '[data-qty]', function () {
-    const delta = Number($(this).data('qty'));
-    const id = $(this).closest('.vet-cart-item').data('id');
+    const delta = Number($(this).attr('data-qty'));
+    const id = $(this).closest('.vet-cart-item').attr('data-id');
     const carrito = obtenerCarrito();
     const idx = carrito.findIndex((x) => x.id === id);
     if (idx === -1) return;
@@ -742,7 +799,7 @@ $(function () {
     registrarBitacora('Resumen de cotización abierto', `${datos.mascota} — ${total} BOB`);
   });
 
-  $('#vetResumenConfirmar').on('click', () => {
+  $('#vetResumenConfirmar').on('click', async () => {
     const carrito = obtenerCarrito();
     const datos = validarDatosPaciente();
     if (!carrito.length || !datos) return;
@@ -760,8 +817,17 @@ $(function () {
     guardarJSON(STORAGE.ventas, ventas);
     renderBitacoraAdmin();
 
-    if (window.SupabaseDW2 && typeof window.SupabaseDW2.guardarCotizacion === 'function') {
-      window.SupabaseDW2.guardarCotizacion({ ...datos, carrito, total }).catch(() => {});
+    if (window.SupabaseDW2 && typeof window.SupabaseDW2.guardar === 'function') {
+      const resumenServicios = carrito.map((it) => `${it.nombre} (x${it.cantidad})`).join(', ');
+      await window.SupabaseDW2.guardar('citas_veterinaria', {
+        tutor: datos.tutor,
+        mascota: `${datos.mascota} [${datos.especie}]`,
+        celular: datos.cel,
+        fecha: new Date().toISOString().split('T')[0],
+        servicio: `Cotización (${total} BOB)`,
+        notas: resumenServicios,
+        origen: 'DonGato-Cotizador'
+      }).catch(() => {});
     }
 
     clearInterval(timerResumen);
@@ -783,7 +849,7 @@ $(function () {
   });
 
   /* ==========================================================================
-     9. FORMULARIO DE CITAS + SUPABASE + WHATSAPP
+     9. FORMULARIO DE CITAS + SUPABASE (citas_veterinaria) + WHATSAPP
      ========================================================================== */
   const hoyISO = new Date().toISOString().split('T')[0];
   $('#citaFecha').attr('min', hoyISO).val(hoyISO);
@@ -826,13 +892,32 @@ $(function () {
       origen: 'DonGato-Web'
     };
 
-    if (window.SupabaseDW2 && typeof window.SupabaseDW2.guardarCita === 'function') {
-      await window.SupabaseDW2.guardarCita(payload).catch(() => {});
+    let guardadoRemoto = false;
+    let encoladoLocal = false;
+
+    if (window.SupabaseDW2 && typeof window.SupabaseDW2.guardar === 'function') {
+      try {
+        const res = await window.SupabaseDW2.guardar('citas_veterinaria', payload);
+        guardadoRemoto = Boolean(res && res.ok);
+        encoladoLocal = Boolean(res && res.encolado);
+      } catch {
+        encoladoLocal = true;
+      }
     }
 
-    $box.html('<span class="msg-exito">✅ Cita registrada correctamente. Abriendo WhatsApp para confirmar horario...</span>');
-    mostrarToast(`📅 Cita registrada para ${mascota}`);
-    registrarBitacora('Cita agendada', `${tutor} · ${mascota} · ${servicio} (${fecha})`);
+    if (guardadoRemoto) {
+      $box.html('<span class="msg-exito">✅ Cita guardada en Supabase (citas_veterinaria). Abriendo WhatsApp...</span>');
+      mostrarToast(`☁️ Cita guardada en Supabase para ${mascota}`);
+      registrarBitacora('Cita guardada en Supabase', `${tutor} · ${mascota} · ${servicio} (${fecha})`);
+    } else if (encoladoLocal) {
+      $box.html('<span class="msg-exito">📦 Guardada en cola local (se enviará a Supabase al reconectar). Abriendo WhatsApp...</span>');
+      mostrarToast(`📦 Cita encolada para ${mascota}`, 'warn');
+      registrarBitacora('Cita encolada offline', `${tutor} · ${mascota} · ${servicio} (${fecha})`);
+    } else {
+      $box.html('<span class="msg-exito">✅ Cita registrada localmente. Abriendo WhatsApp para confirmar horario...</span>');
+      mostrarToast(`📅 Cita registrada para ${mascota}`);
+      registrarBitacora('Cita agendada', `${tutor} · ${mascota} · ${servicio} (${fecha})`);
+    }
 
     const msg = `🐾 *Solicitud de Cita — Clínica Don Gato*\nTutor: ${tutor}\nMascota: ${mascota}\nCelular: ${celular}\nFecha: ${fecha}\nServicio: ${servicio}${notas ? `\nNotas: ${notas}` : ''}`;
     abrirWhatsapp(WHATSAPP_NUM, msg);
@@ -927,7 +1012,12 @@ $(function () {
         if (resp.ok) {
           const json = await resp.json();
           const lista = Array.isArray(json) ? json : (json.servicios || json.catalogo || []);
-          if (lista.length) CATALOGO = lista;
+          if (lista.length) {
+            CATALOGO = lista.map((item) => ({
+              ...item,
+              imagen: resolverImagenServicio(item.nombre, item.imagen)
+            }));
+          }
         }
       } catch {}
     }
