@@ -1,79 +1,55 @@
-const CACHE = 'dongato-vet-v13';
-const CACHE_PREFIX = 'dongato-vet-';
-
+const CACHE_NAME = 'dongato-pwa-v3';
 const ASSETS = [
   './',
   './index.html',
-  './manifest.json',
   './styles.css',
   './script.js',
-  './JS/data.js',
-  './data/catalogo.json',
+  './manifest.json',
   './shared/boot.js',
   './shared/base.css',
   './shared/core.js',
   './shared/validacion.js',
   './shared/supabase-config.js',
   './shared/supabase.js',
-  './Img/LOGO DE DON GATO sin fondo.png',
-  './Img/arena sanitaria.jpg',
-  './Img/bano.jpg',
-  './Img/castracion gatos.jpg',
-  './Img/castracion perro.jpg',
-  './Img/cepillo mascota.jpg',
-  './Img/collar gps.jpg',
-  './Img/consulta.jpg',
-  './Img/corte unas.jpg',
-  './Img/corte.jpg',
-  './Img/cremas.jpg',
-  './Img/ecografia.jpg',
-  './Img/estirilizacion gatas.jpg',
-  './Img/estirilizacion perras.jpg',
-  './Img/eutanasia.jpg',
-  './Img/fluidoterapia.jpg',
-  './Img/inyectable.jpg',
-  './Img/jarabes.jpg',
-  './Img/limpieza dental.jpg',
-  './Img/peluqueria gato.jpg',
-  './Img/peluqueria.jpg',
-  './Img/shampoo.jpg',
-  './Img/tabletas.jpg',
-  './Img/via intravenosa.jpg'
+  './JS/data.js',
+  './data/servicios.json',
+  './Img/LOGO DE DON GATO sin fondo.png'
 ];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE).then((cache) =>
-      Promise.allSettled(ASSETS.map((url) => cache.add(url).catch(() => null)))
-    )
+    caches.open(CACHE_NAME)
+      .then((cache) => Promise.allSettled(ASSETS.map((url) => cache.add(url))))
+      .then(() => self.skipWaiting())
   );
-  self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(
+    caches.keys()
+      .then((keys) => Promise.all(
         keys
-          .filter((key) => key !== CACHE && key.indexOf(CACHE_PREFIX) === 0)
+          .filter((key) => key.startsWith('dongato-') && key !== CACHE_NAME)
           .map((key) => caches.delete(key))
-      )
-    )
+      ))
+      .then(() => self.clients.claim())
   );
-  self.clients.claim();
 });
 
 self.addEventListener('fetch', (event) => {
-  const request = event.request;
+  const { request } = event;
   if (request.method !== 'GET') return;
+
+  const url = new URL(request.url);
+  if (url.protocol !== 'http:' && url.protocol !== 'https:') return;
 
   if (request.mode === 'navigate') {
     event.respondWith(
       fetch(request)
-        .then((response) => {
-          const copy = response.clone();
-          caches.open(CACHE).then((cache) => cache.put(request, copy)).catch(() => {});
-          return response;
+        .then((res) => {
+          const copy = res.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put('./index.html', copy));
+          return res;
         })
         .catch(() => caches.match('./index.html'))
     );
@@ -82,16 +58,17 @@ self.addEventListener('fetch', (event) => {
 
   event.respondWith(
     caches.match(request).then((cached) => {
-      if (cached) return cached;
-      return fetch(request)
-        .then((response) => {
-          if (response && response.status === 200 && new URL(request.url).origin === self.location.origin) {
-            const copy = response.clone();
-            caches.open(CACHE).then((cache) => cache.put(request, copy)).catch(() => {});
+      const networkFetch = fetch(request)
+        .then((res) => {
+          if (res && res.status === 200) {
+            const copy = res.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
           }
-          return response;
+          return res;
         })
-        .catch(() => new Response('', { status: 408 }));
+        .catch(() => cached);
+
+      return cached || networkFetch;
     })
   );
 });

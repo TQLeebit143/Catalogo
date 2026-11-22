@@ -1,1092 +1,948 @@
-(function () {
-  'use strict';
+$(function () {
+  document.body.dataset.hidratado = 'true';
 
-  const CATALOGO = Array.isArray(window.catalogoVet) ? window.catalogoVet : [];
-  const CATS = Array.isArray(window.VET_CATEGORIAS) && window.VET_CATEGORIAS.length
-    ? window.VET_CATEGORIAS
-    : [
-        { id: 'peluqueria', label: 'Peluquería & SPA', emoji: '✂️' },
-        { id: 'veterinaria', label: 'Veterinaria', emoji: '🩺' },
-        { id: 'cirugias', label: 'Cirugías', emoji: '🏥' },
-        { id: 'petshop', label: 'Petshop', emoji: '🛍️' },
-        { id: 'farmacia', label: 'Farmacia', emoji: '💊' }
-      ];
+  /* ==========================================================================
+     1. UTILIDADES CORE Y VALIDACIÓN
+     ========================================================================== */
+  const core = window.DW2Core || {};
 
-  const KEYS = {
-    carrito: 'dongato_cart_v2',
-    alias: 'dongato_alias',
-    eventos: 'dongato_logs_eventos_v2',
-    ventas: 'dongato_logs_ventas_v2',
-    admin: 'dongato_admin_auth'
+  const limpiar = core.limpiar || ((t) => {
+    const limpio = String(t ?? '').trim();
+    if (window.DOMPurify) {
+      return window.DOMPurify.sanitize(limpio, { ALLOWED_TAGS: [], ALLOWED_ATTR: [] });
+    }
+    return limpio;
+  });
+
+  const escapeHTML = core.escapeHTML || ((t) => String(t ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;'));
+
+  const esTelefonoValido = core.esTelefonoValido || ((v) => /^[67]\d{7}$/.test(String(v || '').trim()));
+  const esSoloLetras = core.esSoloLetras || ((v) => /^[A-Za-zÁÉÍÓÚáéíóúÑñÜü\s]{2,60}$/.test(String(v || '').trim()));
+
+  const abrirWhatsapp = core.abrirWhatsapp || ((tel, msg) => {
+    const url = `https://wa.me/${tel}?text=${encodeURIComponent(msg)}`;
+    window.open(url, '_blank', 'noopener,noreferrer');
+  });
+
+  const abrirModalSeguro = (selector) => {
+    if (core.abrirModal) {
+      core.abrirModal(selector);
+      return;
+    }
+    const $modal = $(selector);
+    if ($modal.length) {
+      $modal.addClass('open').attr('aria-hidden', 'false');
+      document.body.style.overflow = 'hidden';
+    }
   };
 
-  const WA_NUMBER = '59167301341';
-  const MAX_LOG = 250;
+  const cerrarModalSeguro = (selector) => {
+    if (core.cerrarModal) {
+      core.cerrarModal(selector);
+      return;
+    }
+    const $modal = selector ? $(selector) : $('.modal.open, .modal[aria-hidden="false"]');
+    $modal.removeClass('open').attr('aria-hidden', 'true');
+    document.body.style.overflow = '';
+  };
 
-  let filtro = { cat: 'todos', rango: 'todos', q: '' };
-  let carrito = normalizarCarrito(App.store.get(KEYS.carrito, []));
-  let detalleActual = null;
-  let ultimaCotizacion = null;
-  let timerCotizacion = null;
+  $(document).on('click', '[data-open-modal]', function (e) {
+    e.preventDefault();
+    const id = $(this).data('openModal');
+    if (id) abrirModalSeguro('#' + id);
+  });
 
-  const $ = (sel, root) => (root || document).querySelector(sel);
-  const $$ = (sel, root) => Array.from((root || document).querySelectorAll(sel));
-  const esc = (v) => App.escape(v);
-  const money = (n) => App.money(n) + ' BOB';
+  $(document).on('click', '[data-close-modal]', function (e) {
+    e.preventDefault();
+    cerrarModalSeguro($(this).closest('.modal'));
+  });
 
-  /* ============================================================
-     MAPEO EXACTO DE IMÁGENES EN Img/
-     Asocia cada servicio/producto con su imagen real de Img/
-     ============================================================ */
-  const MAPA_IMAGENES = [
-    { match: /arena/i, file: 'Img/arena sanitaria.jpg' },
-    { match: /^ba[nñ]o/i, file: 'Img/bano.jpg' },
-    { match: /castraci[oó]n.*gato|gato.*castraci[oó]n/i, file: 'Img/castracion gatos.jpg' },
-    { match: /castraci[oó]n.*perro|perro.*castraci[oó]n/i, file: 'Img/castracion perro.jpg' },
-    { match: /cepillo/i, file: 'Img/cepillo mascota.jpg' },
-    { match: /collar|gps/i, file: 'Img/collar gps.jpg' },
-    { match: /consulta/i, file: 'Img/consulta.jpg' },
-    { match: /u[nñ]a/i, file: 'Img/corte unas.jpg' },
-    { match: /^corte\b/i, file: 'Img/corte.jpg' },
-    { match: /crema|pomada/i, file: 'Img/cremas.jpg' },
-    { match: /ecograf/i, file: 'Img/ecografia.jpg' },
-    { match: /esterilizaci[oó]n.*gat|gat.*esterilizaci[oó]n/i, file: 'Img/estirilizacion gatas.jpg' },
-    { match: /esterilizaci[oó]n.*perr|perr.*esterilizaci[oó]n/i, file: 'Img/estirilizacion perras.jpg' },
-    { match: /eutanasia/i, file: 'Img/eutanasia.jpg' },
-    { match: /fluidoterapia|suero/i, file: 'Img/fluidoterapia.jpg' },
-    { match: /inyect|vacun|desparasit/i, file: 'Img/inyectable.jpg' },
-    { match: /jarabe/i, file: 'Img/jarabes.jpg' },
-    { match: /dental|diente/i, file: 'Img/limpieza dental.jpg' },
-    { match: /peluquer[ií]a.*gat|gat.*peluquer/i, file: 'Img/peluqueria gato.jpg' },
-    { match: /peluquer[ií]a/i, file: 'Img/peluqueria.jpg' },
-    { match: /^shampoo|^champ[uú]/i, file: 'Img/shampoo.jpg' },
-    { match: /tableta|pastilla|comprimido/i, file: 'Img/tabletas.jpg' },
-    { match: /intravenos|v[ií]a/i, file: 'Img/via intravenosa.jpg' }
+  $(document).on('click', '.modal', function (e) {
+    if (e.target === this) cerrarModalSeguro(this);
+  });
+
+  $(document).on('keydown', function (e) {
+    if (e.key === 'Escape') cerrarModalSeguro();
+  });
+
+  /* ==========================================================================
+     2. CONFIGURACIÓN, CATÁLOGO (CON RESPALDO INTEGRADO) Y CONSTANTES
+     ========================================================================== */
+ const CATALOGO_RESPALDO = [
+    // PELUQUERÍA & SPA
+    { id: 'pel-1', categoria: 'peluqueria', nombre: 'Baño Medicado y Secado', precio: 60, descripcion: 'Baño dermatológico con shampoo hipoalergénico, secado suave y cepillado.', nota: 'Ideal para piel sensible o alergias.', imagen: 'Img/bano.jpg' },
+    { id: 'pel-2', categoria: 'peluqueria', nombre: 'Peluquería & SPA Completo', precio: 80, descripcion: 'Corte higiénico o de raza, baño relajante, limpieza de oídos y corte de uñas.', nota: 'Incluye aromaterapia suave.', imagen: 'Img/peluqueria.jpg' },
+    { id: 'pel-3', categoria: 'peluqueria', nombre: 'Peluquería Felina Especializada', precio: 95, descripcion: 'Corte y deslanado profundo sin estrés con acondicionador nutritivo para gatos.', nota: 'Reduce bolas de pelo en gatos.', imagen: 'Img/peluqueria gato.jpg' },
+    { id: 'pel-4', categoria: 'peluqueria', nombre: 'Corte de Pelo Higiénico o de Raza', precio: 65, descripcion: 'Recorte estético y sanitario adaptado al estándar de cada mascota.', nota: 'Incluye perfume hipoalergénico.', imagen: 'Img/corte.jpg' },
+    { id: 'pel-5', categoria: 'peluqueria', nombre: 'Corte de Uñas y Limpieza Básica', precio: 25, descripcion: 'Recorte cuidadoso de uñas y revisión de almohadillas.', nota: 'Sesión rápida sin estrés.', imagen: 'Img/corte unas.jpg' },
+
+    // MEDICINA VETERINARIA
+    { id: 'vet-1', categoria: 'veterinaria', nombre: 'Consulta Médica General', precio: 30, descripcion: 'Evaluación clínica completa por el Dr. Jorge Castillo MVZ.', nota: 'Incluye control de peso y temperatura.', imagen: 'Img/consulta.jpg' },
+    { id: 'vet-2', categoria: 'veterinaria', nombre: 'Vacunación e Inyectables', precio: 65, descripcion: 'Inmunización anual preventiva (Triple Felina / Séxtuple) con carnet sanitario.', nota: 'Paciente debe estar previamente desparasitado.', imagen: 'Img/inyectable.jpg' },
+    { id: 'vet-3', categoria: 'veterinaria', nombre: 'Ecografía Abdominal y Gestacional', precio: 60, descripcion: 'Diagnóstico por imagen no invasivo de órganos internos o gestación.', nota: 'Requiere ayuno previo de 6 horas.', imagen: 'Img/ecografia.jpg' },
+    { id: 'vet-4', categoria: 'veterinaria', nombre: 'Limpieza Dental con Ultrasonido', precio: 180, descripcion: 'Profilaxis dental completa bajo sedación controlada y pulido.', nota: 'Previene enfermedad periodontal.', imagen: 'Img/limpieza dental.jpg' },
+    { id: 'vet-5', categoria: 'veterinaria', nombre: 'Fluidoterapia Clínica', precio: 90, descripcion: 'Terapia de hidratación y reposición electrolítica supervisada.', nota: 'Atención ambulatoria monitoreada.', imagen: 'Img/fluidoterapia.jpg' },
+    { id: 'vet-6', categoria: 'veterinaria', nombre: 'Canalización de Vía Intravenosa', precio: 75, descripcion: 'Colocación de catéter venoso para administración directa de medicación.', nota: 'Protocolo estéril con monitoreo constante.', imagen: 'Img/via intravenosa.jpg' },
+    { id: 'vet-7', categoria: 'veterinaria', nombre: 'Eutanasia Humanitaria Compasiva', precio: 150, descripcion: 'Procedimiento indoloro y respetuoso acompañado de asesoría veterinaria.', nota: 'Previa evaluación clínica del Dr. Jorge Castillo.', imagen: 'Img/eutanasia.jpg' },
+
+    // CIRUGÍAS
+    { id: 'cir-1', categoria: 'cirugias', nombre: 'Castración de Gatos (Macho)', precio: 180, descripcion: 'Orquiectomía segura con anestesia monitoreada y analgesia postoperatoria.', nota: 'Ayuno de sólidos de 8 horas.', imagen: 'Img/castracion gatos.jpg' },
+    { id: 'cir-2', categoria: 'cirugias', nombre: 'Esterilización de Gatas (Hembra)', precio: 250, descripcion: 'Ovariohisterectomía con sutura intradérmica estética y control postoperatorio.', nota: 'Incluye primera dosis antibiótica.', imagen: 'Img/estirilizacion gatas.jpg' },
+    { id: 'cir-3', categoria: 'cirugias', nombre: 'Castración de Perros (Macho)', precio: 240, descripcion: 'Cirugía segura con monitoreo multiparamétrico y control del dolor.', nota: 'Ayuno de sólidos de 8 horas.', imagen: 'Img/castracion perro.jpg' },
+    { id: 'cir-4', categoria: 'cirugias', nombre: 'Esterilización de Perras (Hembra)', precio: 320, descripcion: 'Ovariohisterectomía con protocolo anestésico seguro y seguimiento clínico.', nota: 'Previa valoración prequirúrgica.', imagen: 'Img/estirilizacion perras.jpg' },
+
+    // PETSHOP
+    { id: 'pet-1', categoria: 'petshop', nombre: 'Arena Sanitaria Aglutinante 5 kg', precio: 45, descripcion: 'Control superior de olores, libre de polvo y fácil de limpiar.', nota: 'Aroma neutro para gatos exigentes.', imagen: 'Img/arena sanitaria.jpg' },
+    { id: 'pet-2', categoria: 'petshop', nombre: 'Cepillo Deslanador para Mascotas', precio: 35, descripcion: 'Cerdas suaves que retiran el pelaje suelto y masajean la piel.', nota: 'Ideal para perros y gatos.', imagen: 'Img/cepillo mascota.jpg' },
+    { id: 'pet-3', categoria: 'petshop', nombre: 'Collar Localizador GPS Inteligente', precio: 140, descripcion: 'Collar ajustable resistente al agua con rastreo en tiempo real.', nota: 'Batería recargable de larga duración.', imagen: 'Img/collar gps.jpg' },
+    { id: 'pet-4', categoria: 'petshop', nombre: 'Shampoo Dermatológico Neutro', precio: 40, descripcion: 'Fórmula suave con avena y aloe vera para pelaje brillante.', nota: 'Uso frecuente sin resecar la piel.', imagen: 'Img/shampoo.jpg' },
+
+    // FARMACIA
+    { id: 'far-1', categoria: 'farmacia', nombre: 'Antiparasitario en Tabletas', precio: 25, descripcion: 'Tableta palatable de amplio espectro contra parásitos internos.', nota: 'Dosificación exacta según peso.', imagen: 'Img/tabletas.jpg' },
+    { id: 'far-2', categoria: 'farmacia', nombre: 'Jarabe Vitamínico y Protector Hepático', precio: 45, descripcion: 'Suspensión oral palatable con vitaminas del complejo B y aminoácidos.', nota: 'Incluye jeringa dosificadora.', imagen: 'Img/jarabes.jpg' },
+    { id: 'far-3', categoria: 'farmacia', nombre: 'Cremas y Pomadas Cicatrizantes', precio: 35, descripcion: 'Pomada tópica regeneradora para irritaciones, heridas leves y almohadillas.', nota: 'Aplicar 2 veces al día sobre zona limpia.', imagen: 'Img/cremas.jpg' }
   ];
-  function resolverImagen(p) {
-    const texto = `${p.nombre || ''} ${p.detalle || ''}`;
-    const encontrado = MAPA_IMAGENES.find((m) => m.match.test(texto));
-    if (encontrado) return encontrado.file;
-    if (p.img) {
-      return String(p.img).replace(/^img\//i, 'Img/');
-    }
-    return 'Img/LOGO DE DON GATO sin fondo.png';
-  }
 
-  function manejarErrorImagen(img, emoji) {
-    const intento = Number(img.dataset.extTry || 0);
-    const exts = ['.jpg', '.png', '.jpeg', '.webp'];
-    const base = (img.getAttribute('src') || '').replace(/\.[^.]+$/, '');
-    if (base && intento < exts.length) {
-      img.dataset.extTry = String(intento + 1);
-      const siguiente = base + exts[intento];
-      if (siguiente !== img.getAttribute('src')) {
-        img.src = siguiente;
-        return;
-      }
-    }
-    if (window.App && typeof App.imgFallback === 'function') {
-      App.imgFallback(img, emoji || '🐾');
-    }
-  }
+  let CATALOGO = Array.isArray(window.DONGATO_CATALOGO) && window.DONGATO_CATALOGO.length
+    ? window.DONGATO_CATALOGO
+    : (Array.isArray(window.CATALOGO_SERVICIOS) && window.CATALOGO_SERVICIOS.length
+      ? window.CATALOGO_SERVICIOS
+      : (Array.isArray(window.servicios) && window.servicios.length ? window.servicios : []));
 
-  /* ============================================================
-     TOAST ALERT FLOTANTE (jQuery .slideDown / .delay / .fadeOut)
-     ============================================================ */
-  function mostrarToastUI(mensaje, tipo) {
-    if (window.jQuery) {
-      const $toast = window.jQuery('#vetToastAlert');
-      $toast
-        .stop(true, true)
-        .removeClass('is-ok is-warn')
-        .addClass(tipo === 'warn' ? 'is-warn' : 'is-ok')
-        .text(mensaje)
-        .slideDown(250)
-        .delay(3000)
-        .fadeOut(350);
-    } else if (window.App && App.toast) {
-      App.toast(mensaje, tipo || 'ok');
-    }
-  }
+  const CATEGORIAS = window.DONGATO_CATEGORIAS || {
+    todos: 'Todos',
+    peluqueria: 'Peluquería & SPA',
+    veterinaria: 'Medicina Veterinaria',
+    cirugias: 'Cirugías',
+    petshop: 'Petshop',
+    farmacia: 'Farmacia'
+  };
 
-  /* ============================================================
-     BITÁCORA EN VIVO (#logOutput) CON MARCA DE TIEMPO
-     ============================================================ */
-  function escribirConsolaViva(tipo, mensaje) {
-    const salida = $('#logOutput');
-    if (!salida) return;
-    const hora = new Date().toLocaleTimeString();
-    const fila = document.createElement('div');
-    fila.textContent = `[${hora}] ${tipo}: ${mensaje}`;
-    salida.prepend(fila);
-    while (salida.children.length > 60) {
-      salida.removeChild(salida.lastChild);
-    }
-  }
+  const SUBFILTROS_CASCADA = {
+    peluqueria: [
+      { id: 'todos', label: 'Todos los servicios de SPA' },
+      { id: 'economico', label: 'Hasta 80 BOB' },
+      { id: 'premium', label: 'Más de 80 BOB' }
+    ],
+    veterinaria: [
+      { id: 'todos', label: 'Todas las atenciones médicas' },
+      { id: 'economico', label: 'Consultas y vacunas (≤ 70 BOB)' },
+      { id: 'premium', label: 'Especialidades (> 70 BOB)' }
+    ],
+    cirugias: [
+      { id: 'todos', label: 'Todas las cirugías' },
+      { id: 'economico', label: 'Cirugías menores (≤ 250 BOB)' },
+      { id: 'premium', label: 'Cirugías mayores (> 250 BOB)' }
+    ],
+    petshop: [
+      { id: 'todos', label: 'Todos los productos Petshop' },
+      { id: 'economico', label: 'Accesorios y snacks (≤ 45 BOB)' },
+      { id: 'premium', label: 'Alimentos y transporte (> 45 BOB)' }
+    ],
+    farmacia: [
+      { id: 'todos', label: 'Toda la farmacia' },
+      { id: 'economico', label: 'Antiparasitarios básicos (≤ 35 BOB)' },
+      { id: 'premium', label: 'Tratamientos completos (> 35 BOB)' }
+    ]
+  };
 
-  function normalizarCarrito(raw) {
-    if (!Array.isArray(raw)) return [];
-    return raw
-      .map((item) => {
-        if (!item || typeof item !== 'object') return null;
-        const id = Number(item.id);
-        if (!CATALOGO.some((p) => p.id === id)) return null;
-        return { id, qty: App.clamp(item.qty || 1, 1, 99) };
-      })
-      .filter(Boolean);
-  }
+  const WHATSAPP_NUM = '59167301341';
+  const STORAGE = {
+    alias: 'dongato_alias',
+    carrito: 'dongato_carrito',
+    eventos: 'dongato_eventos',
+    ventas: 'dongato_ventas',
+    admin: 'dongato_admin',
+    vistaSimulada: 'dongato_vista_movil'
+  };
 
-  function guardarCarrito() {
-    App.store.set(KEYS.carrito, carrito);
-  }
+  let categoriaActiva = 'todos';
+  let subfiltroCascada = 'todos';
+  let textoBusqueda = '';
+  let servicioDetalleActual = null;
+  let timerResumen = null;
+  let segundosRestantes = 30;
+  let deferredPrompt = null;
 
-  function producto(id) {
-    return CATALOGO.find((p) => p.id === Number(id));
-  }
-
-  function aliasActual() {
-    return App.store.get(KEYS.alias, '') || 'Invitado';
-  }
-
-  function esAdmin() {
-    try { return sessionStorage.getItem(KEYS.admin) === 'true'; } catch (e) { return false; }
-  }
-
-  function setAdmin(valor) {
+  const leerJSON = (clave, defecto) => {
     try {
-      if (valor) sessionStorage.setItem(KEYS.admin, 'true');
-      else sessionStorage.removeItem(KEYS.admin);
-    } catch (e) { /* noop */ }
-  }
+      const raw = localStorage.getItem(clave);
+      return raw ? JSON.parse(raw) : defecto;
+    } catch {
+      return defecto;
+    }
+  };
 
-  function detalleCarrito() {
-    return carrito
-      .map((line) => {
-        const p = producto(line.id);
-        return p ? { ...p, qty: line.qty, subtotal: p.precio * line.qty } : null;
-      })
-      .filter(Boolean);
-  }
+  const guardarJSON = (clave, valor) => {
+    try {
+      localStorage.setItem(clave, JSON.stringify(valor));
+    } catch {}
+  };
 
-  function totales() {
-    const detalle = detalleCarrito();
-    return {
-      items: detalle.reduce((sum, i) => sum + i.qty, 0),
-      total: detalle.reduce((sum, i) => sum + i.subtotal, 0),
+  /* ==========================================================================
+     3. NOTIFICACIONES TOAST, RESPALDO DE IMÁGENES Y BITÁCORA EN VIVO
+     ========================================================================== */
+  const mostrarToast = (mensaje, tipo = 'ok') => {
+    const $toast = $('#vetToastAlert');
+    if (!$toast.length) return;
+    $toast
+      .removeClass('is-ok is-warn')
+      .addClass(tipo === 'warn' ? 'is-warn' : 'is-ok')
+      .text(mensaje)
+      .stop(true, true)
+      .fadeIn(180);
+    clearTimeout(mostrarToast._t);
+    mostrarToast._t = setTimeout(() => $toast.fadeOut(280), 3200);
+  };
+
+  const crearSvgRespaldo = (titulo, emoji = '🐾') => {
+    const texto = limpiar(titulo || 'Don Gato').slice(0, 26);
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 260"><defs><linearGradient id="dg" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#1a0a24"/><stop offset="100%" stop-color="#4a194a"/></linearGradient></defs><rect width="400" height="260" fill="url(#dg)"/><text x="200" y="118" text-anchor="middle" font-size="44">${emoji}</text><text x="200" y="164" text-anchor="middle" fill="#f5c518" font-family="Segoe UI,sans-serif" font-size="15" font-weight="700">${escapeHTML(texto)}</text></svg>`;
+    return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
+  };
+
+  const aplicarRespaldoImagenes = (contenedor = document) => {
+    $(contenedor).find('img').each(function () {
+      const img = this;
+      const fallback = () => {
+        if (img.dataset.fallbackApplied) return;
+        img.dataset.fallbackApplied = 'true';
+        img.src = crearSvgRespaldo(img.alt || 'Don Gato', img.dataset.fallbackEmoji || '🐾');
+      };
+      if (img.complete && img.naturalWidth === 0 && img.getAttribute('src')) {
+        fallback();
+      }
+      $(img).off('error.vetFallback').on('error.vetFallback', fallback);
+    });
+  };
+
+  const registrarBitacora = (accion, detalle = '') => {
+    const hora = new Date().toLocaleTimeString('es-BO', {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
+    });
+    const texto = `[${hora}] ${accion}${detalle ? ` → ${detalle}` : ''}`;
+
+    const $live = $('#logOutput');
+    if ($live.length) {
+      $live.prepend($('<div></div>').text(texto));
+      const hijos = $live.children();
+      if (hijos.length > 45) hijos.last().remove();
+    }
+
+    const eventos = leerJSON(STORAGE.eventos, []);
+    eventos.unshift({
+      fecha: new Date().toLocaleString('es-BO'),
+      accion,
       detalle
-    };
-  }
-
-  function leerLog(key) {
-    const data = App.store.get(key, []);
-    return Array.isArray(data) ? data : [];
-  }
-
-  function agregarLog(key, entrada) {
-    const lista = leerLog(key);
-    lista.unshift(entrada);
-    App.store.set(key, lista.slice(0, MAX_LOG));
-    if (esAdmin()) renderAdmin();
-  }
-
-  function logEvento(msg, tipo) {
-    escribirConsolaViva((tipo || 'INFO').toUpperCase(), msg);
-    agregarLog(KEYS.eventos, {
-      t: Date.now(),
-      tipo: tipo || 'info',
-      alias: aliasActual(),
-      msg: String(msg)
     });
+    guardarJSON(STORAGE.eventos, eventos.slice(0, 80));
+    renderBitacoraAdmin();
+  };
+
+  /* ==========================================================================
+     4. MODO CELULAR 📱 / LAPTOP 💻 Y NAVEGACIÓN DE VISTAS SIN SCROLL GLOBAL
+     ========================================================================== */
+  const esDispositivoMovilReal = () => {
+    return window.matchMedia('(max-width: 768px)').matches
+      || window.matchMedia('(orientation: landscape) and (max-height: 520px)').matches;
+  };
+
+  const esVistaCelularActiva = () => {
+    return document.body.classList.contains('vista-movil-simulada') || esDispositivoMovilReal();
+  };
+
+  const actualizarBotonVista = (simulado) => {
+    const $btn = $('#btnSimularVista');
+    if (!$btn.length) return;
+    $btn.attr('aria-pressed', String(simulado));
+    $btn.find('.view-icon').text(simulado ? '💻' : '📱');
+    $btn.find('.view-label').text(simulado ? 'Laptop' : 'Móvil');
+    $btn.attr('title', simulado ? 'Volver a vista completa de Laptop' : 'Simular vista de Celular sin scroll global');
+  };
+
+  const activarVista = (idSeccion, hacerScroll = true) => {
+    if (!idSeccion) return;
+    const $destino = $('#' + idSeccion);
+    if (!$destino.length) return;
+
+    $('.vista-seccion').removeClass('is-vista-activa');
+    $destino.addClass('is-vista-activa');
+    $destino.scrollTop(0);
+
+    $('.vet-links a').removeClass('active');
+    $(`.vet-links a[data-vista-target="${idSeccion}"]`).addClass('active');
+
+    $('.vet-dock-link').removeClass('is-active');
+    $(`.vet-dock-link[data-vista-target="${idSeccion}"]`).addClass('is-active');
+
+    if ($('#vetMobileNav').is(':visible')) {
+      $('#vetMobileNav').slideUp(160);
+      $('#burguerBtn').attr('aria-expanded', 'false');
+    }
+
+    if (hacerScroll && !esVistaCelularActiva() && $destino[0]) {
+      $destino[0].scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
+
+  if (localStorage.getItem(STORAGE.vistaSimulada) === '1' && !esDispositivoMovilReal()) {
+    document.body.classList.add('vista-movil-simulada');
+    actualizarBotonVista(true);
   }
 
-  function logVenta(venta) {
-    agregarLog(KEYS.ventas, Object.assign({ t: Date.now(), alias: aliasActual() }, venta));
+  $('#btnSimularVista').on('click', function () {
+    const activo = document.body.classList.toggle('vista-movil-simulada');
+    localStorage.setItem(STORAGE.vistaSimulada, activo ? '1' : '0');
+    actualizarBotonVista(activo);
+
+    const seccionActual = $('.vista-seccion.is-vista-activa').attr('id') || 'inicio';
+    activarVista(seccionActual, !activo);
+
+    mostrarToast(
+      activo
+        ? '📱 Vista Celular activada (navegación por pestañas sin scroll global)'
+        : '💻 Vista Laptop restaurada (pantalla completa)'
+    );
+    registrarBitacora('Cambio de vista', activo ? 'Modo Celular (📱)' : 'Modo Laptop (💻)');
+  });
+
+  $(window).on('resize orientationchange', function () {
+    if (esDispositivoMovilReal() && document.body.classList.contains('vista-movil-simulada')) {
+      document.body.classList.remove('vista-movil-simulada');
+      actualizarBotonVista(false);
+    }
+    const seccionActual = $('.vista-seccion.is-vista-activa').attr('id') || 'inicio';
+    activarVista(seccionActual, false);
+  });
+
+  $(document).on('click', '[data-vista-target]', function (e) {
+    const target = $(this).data('vistaTarget');
+    if (!target) return;
+    e.preventDefault();
+    activarVista(target, true);
+  });
+
+  /* ==========================================================================
+     5. TEMA OSCURO/CLARO, PWA, ESTADO DE RED Y SERVICE WORKER
+     ========================================================================== */
+  const aplicarTemaLocal = (tema) => {
+    const valido = tema === 'light' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', valido);
+    localStorage.setItem('dw2-theme', valido);
+    const $icon = $('#themeBtn .theme-icon');
+    if ($icon.length) $icon.text(valido === 'dark' ? '☀️' : '🌙');
+  };
+
+  aplicarTemaLocal(localStorage.getItem('dw2-theme') || document.documentElement.getAttribute('data-theme') || 'dark');
+
+  $('#themeBtn').on('click', function () {
+    const actual = document.documentElement.getAttribute('data-theme');
+    const nuevo = actual === 'dark' ? 'light' : 'dark';
+    aplicarTemaLocal(nuevo);
+    registrarBitacora('Cambio de tema', nuevo === 'dark' ? 'Modo Oscuro' : 'Modo Claro');
+  });
+
+  const actualizarEstadoRed = () => {
+    const online = navigator.onLine;
+    const $pill = $('#estadoRed');
+    if ($pill.length) {
+      $pill
+        .text(online ? 'En Línea' : 'Offline Local')
+        .toggleClass('is-offline', !online);
+    }
+    if (online && window.SupabaseDW2 && typeof window.SupabaseDW2.sincronizar === 'function') {
+      window.SupabaseDW2.sincronizar().catch(() => {});
+    }
+  };
+
+  window.addEventListener('online', () => {
+    actualizarEstadoRed();
+    mostrarToast('🌐 Conexión restablecida. Sincronizando datos locales...');
+    registrarBitacora('Red conectada', 'Sincronización automática con Supabase');
+  });
+
+  window.addEventListener('offline', () => {
+    actualizarEstadoRed();
+    mostrarToast('📴 Sin conexión: operando en modo Offline-First', 'warn');
+    registrarBitacora('Modo Offline', 'Respaldo activo en localStorage');
+  });
+
+  actualizarEstadoRed();
+
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    $('#btnInstalarPWA').prop('hidden', false);
+  });
+
+  $('#btnInstalarPWA').on('click', async function () {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    await deferredPrompt.userChoice;
+    deferredPrompt = null;
+    $(this).prop('hidden', true);
+    registrarBitacora('Instalación PWA', 'Solicitud ejecutada por el usuario');
+  });
+
+  if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+    navigator.serviceWorker.register('./sw.js').catch(() => {});
   }
 
-  function renderAdmin() {
-    const eventos = leerLog(KEYS.eventos);
-    const ventas = leerLog(KEYS.ventas);
+  /* ==========================================================================
+     6. ALIAS DEL TUTOR Y MENÚ HAMBURGUESA
+     ========================================================================== */
+  const aplicarAlias = (alias) => {
+    const limpio = limpiar(alias).slice(0, 40);
+    if (limpio) {
+      localStorage.setItem(STORAGE.alias, limpio);
+      $('#vetAliasDisplay').text(limpio);
+      $('#vetAliasInput, #vetClientAlias').val(limpio);
+      if (!$('#vetOwner').val()) $('#vetOwner').val(limpio);
+      if (!$('#citaTutor').val()) $('#citaTutor').val(limpio);
+    }
+  };
 
-    const cajaEventos = $('#vetLogEventos');
-    const cajaVentas = $('#vetLogVentas');
-    if (!cajaEventos || !cajaVentas) return;
+  aplicarAlias(localStorage.getItem(STORAGE.alias) || '');
 
-    cajaEventos.innerHTML = eventos.length
-      ? eventos.map((e) => `
-          <div class="log-entry ${esc(e.tipo || 'info')}">
-            <span class="log-time">${esc(App.dateTime(e.t))}</span>
-            <span class="log-type">${esc((e.tipo || 'info').toUpperCase())}</span>
-            <strong>${esc(e.alias || 'Invitado')}:</strong> ${esc(e.msg)}
-          </div>`).join('')
-      : '<div class="log-empty">Sin eventos registrados todavía.</div>';
+  $('#vetAliasForm, #vetClientForm').on('submit', function (e) {
+    e.preventDefault();
+    const val = $(this).find('input').val();
+    if (!limpiar(val)) return;
+    aplicarAlias(val);
+    mostrarToast(`🐾 Alias guardado: ${limpiar(val)}`);
+    registrarBitacora('Alias actualizado', limpiar(val));
+    if (this.id === 'vetClientForm') {
+      cerrarModalSeguro('#vetCuentaModal');
+    }
+  });
 
-    cajaVentas.innerHTML = ventas.length
-      ? ventas.map((v) => {
-          const items = Array.isArray(v.items) ? v.items : [];
-          const detalle = items.map((i) => `${i.qty}x ${esc(i.nombre)}`).join(' · ');
-          return `
-            <div class="log-entry ok">
-              <span class="log-time">${esc(App.dateTime(v.t))}</span>
-              <span class="log-type">VENTA</span>
-              <strong>${esc(v.cliente || v.alias || 'Cliente')}</strong>
-              ${v.mascota ? ' · 🐾 ' + esc(v.mascota) : ''}
-              · ${esc(money(v.total || 0))}
-              <div class="small muted">${detalle || 'Sin detalle'}</div>
-            </div>`;
-        }).join('')
-      : '<div class="log-empty">Aún no hay cotizaciones confirmadas.</div>';
+  $('#burguerBtn').on('click', function () {
+    const $nav = $('#vetMobileNav');
+    const abierto = $nav.is(':visible');
+    $nav.slideToggle(180);
+    $(this).attr('aria-expanded', String(!abierto));
+  });
 
-    const totalVentas = ventas.reduce((sum, v) => sum + (Number(v.total) || 0), 0);
-    const itemsVendidos = ventas.reduce((sum, v) => sum + (Array.isArray(v.items)
-      ? v.items.reduce((s, i) => s + (Number(i.qty) || 0), 0) : 0), 0);
-    const ticket = ventas.length ? totalVentas / ventas.length : 0;
-
-    $('#kpiVentas').textContent = money(totalVentas);
-    $('#kpiEventos').textContent = String(eventos.length);
-    $('#kpiItems').textContent = String(itemsVendidos);
-    $('#kpiTicket').textContent = money(ticket);
-  }
-
-  function cumpleRangoPrecio(precio) {
-    if (filtro.rango === 'economico') return precio <= 50;
-    if (filtro.rango === 'medio') return precio > 50 && precio <= 120;
-    if (filtro.rango === 'especializado') return precio > 120;
-    return true;
-  }
-
-  function coincidencias() {
-    const q = filtro.q.trim().toLowerCase();
-    return CATALOGO.filter((p) => {
-      const okCat = filtro.cat === 'todos' || p.categoria === filtro.cat;
-      if (!okCat || !cumpleRangoPrecio(Number(p.precio) || 0)) return false;
-      if (!q) return true;
-      const texto = [p.nombre, p.detalle, p.nota, p.catLabel, p.categoria].join(' ').toLowerCase();
-      return texto.includes(q);
+  /* ==========================================================================
+     7. CATÁLOGO DINÁMICO, CHIPS, BÚSQUEDA Y SELECTS EN CASCADA
+     ========================================================================== */
+  const renderChipsCategorias = () => {
+    const $cont = $('#vetFiltros').empty();
+    Object.entries(CATEGORIAS).forEach(([clave, nombre]) => {
+      const activo = clave === categoriaActiva;
+      const $btn = $('<button type="button" class="chip"></button>')
+        .text(nombre)
+        .toggleClass('active', activo)
+        .attr('aria-pressed', String(activo))
+        .data('cat', clave);
+      $cont.append($btn);
     });
-  }
+  };
 
-  function conteos() {
-    const q = filtro.q.trim().toLowerCase();
-    const base = CATALOGO.filter((p) => {
-      if (!cumpleRangoPrecio(Number(p.precio) || 0)) return false;
-      if (!q) return true;
-      return [p.nombre, p.detalle, p.nota, p.catLabel, p.categoria]
-        .join(' ').toLowerCase().includes(q);
+  const actualizarSelectCascada = (area) => {
+    const $sub = $('#vetCascadeSub').empty();
+    if (!area || area === 'todos' || !SUBFILTROS_CASCADA[area]) {
+      $sub.append('<option value="todos">-- Primero elige un área --</option>').prop('disabled', true);
+      subfiltroCascada = 'todos';
+      return;
+    }
+    SUBFILTROS_CASCADA[area].forEach((op) => {
+      $sub.append(`<option value="${escapeHTML(op.id)}">${escapeHTML(op.label)}</option>`);
     });
-    const map = { todos: base.length };
-    CATS.forEach((c) => { map[c.id] = base.filter((p) => p.categoria === c.id).length; });
-    return map;
-  }
+    $sub.prop('disabled', false);
+    subfiltroCascada = 'todos';
+  };
 
-  function renderFiltros() {
-    const host = $('#vetFiltros');
-    if (!host) return;
-    const counts = conteos();
-    const chips = [];
+  const obtenerLimitePrecioArea = (area) => {
+    if (area === 'cirugias') return 250;
+    if (area === 'petshop') return 45;
+    if (area === 'farmacia') return 35;
+    if (area === 'peluqueria') return 80;
+    return 70;
+  };
 
-    chips.push(`<button type="button" class="chip ${filtro.cat === 'todos' ? 'active' : ''}"
-      data-cat="todos">🐾 Todos <span class="count">(${counts.todos})</span></button>`);
-
-    CATS.forEach((cat) => {
-      const n = counts[cat.id] || 0;
-      if (n === 0 && filtro.cat !== cat.id) return;
-      chips.push(`<button type="button" class="chip ${filtro.cat === cat.id ? 'active' : ''}"
-        data-cat="${esc(cat.id)}">${esc(cat.emoji || '•')} ${esc(cat.label)}
-        <span class="count">(${n})</span></button>`);
+  const filtrarCatalogo = () => {
+    const q = limpiar(textoBusqueda).toLowerCase();
+    const filtrados = CATALOGO.filter((item) => {
+      const okCat = categoriaActiva === 'todos' || item.categoria === categoriaActiva;
+      let okSub = true;
+      if (categoriaActiva !== 'todos' && subfiltroCascada !== 'todos') {
+        const limite = obtenerLimitePrecioArea(categoriaActiva);
+        okSub = subfiltroCascada === 'economico'
+          ? Number(item.precio) <= limite
+          : Number(item.precio) > limite;
+      }
+      const okTexto = !q
+        || String(item.nombre || '').toLowerCase().includes(q)
+        || String(item.descripcion || '').toLowerCase().includes(q)
+        || String(item.nota || '').toLowerCase().includes(q);
+      return okCat && okSub && okTexto;
     });
 
-    host.innerHTML = chips.join('');
-  }
+    $('#vetStatServicios').text(CATALOGO.length);
+    $('#vetResultInfo').text(`Mostrando ${filtrados.length} de ${CATALOGO.length} servicios y productos disponibles.`);
 
-  function renderCatalogo() {
-    const grid = $('#vetGrid');
-    if (!grid) return;
-    const lista = coincidencias();
+    const $grid = $('#vetGrid').empty();
+    if (!filtrados.length) {
+      $grid.append('<div class="card card-pad vet-empty"><p class="muted">No se encontraron servicios con ese filtro. Prueba otra búsqueda o categoría.</p></div>');
+      return;
+    }
 
-    if (!lista.length) {
-      grid.innerHTML = `
-        <div class="empty vet-empty">
-          <span class="empty-icon">🐾</span>
-          <strong>No se encontraron resultados</strong>
-          <span>Prueba con otra palabra o cambia de categoría.</span>
-          <button type="button" class="btn btn-ghost btn-sm mt-1" data-reset-filtros>Ver todo el catálogo</button>
-        </div>`;
-    } else {
-      grid.innerHTML = lista.map((p) => {
-        const rutaImg = resolverImagen(p);
-        const emoji = p.emoji || '🐾';
-        return `
-        <article class="vet-card" data-id="${p.id}" data-categoria="${esc(p.categoria)}" tabindex="0" aria-label="${esc(p.nombre)}">
+    filtrados.forEach((item) => {
+      const catNombre = CATEGORIAS[item.categoria] || item.categoria;
+      const html = `
+        <article class="vet-card" data-id="${escapeHTML(item.id)}">
           <div class="vet-card-media">
-            <img src="${esc(rutaImg)}" alt="${esc(p.nombre)}" loading="lazy" width="320" height="200"
-                 data-fallback-emoji="${esc(emoji)}">
-            <button type="button" class="vet-zoom-btn" data-detail="${p.id}">🔍 Ficha</button>
+            <img src="${escapeHTML(item.imagen)}" alt="${escapeHTML(item.nombre)}" loading="lazy" decoding="async" data-fallback-emoji="🐾">
+            <button type="button" class="vet-zoom-btn" data-action="detalle" data-id="${escapeHTML(item.id)}">🔍 Detalle</button>
           </div>
           <div class="vet-card-body">
-            <span class="vet-card-cat">${esc(p.catLabel || p.categoria)}</span>
-            <h3 class="vet-card-title">${esc(p.nombre)}</h3>
-            <p class="vet-card-desc">${esc(p.detalle)}</p>
-            <div class="vet-card-acordeon">
-              <strong>Especificaciones:</strong> ${esc(p.nota || 'Atención profesional bajo supervisión del Dr. Jorge Castillo MVZ.')}
-            </div>
+            <span class="vet-card-cat">${escapeHTML(catNombre)}</span>
+            <h3 class="vet-card-title">${escapeHTML(item.nombre)}</h3>
+            <p class="vet-card-desc">${escapeHTML(item.descripcion)}</p>
+            <div class="vet-card-acordeon">${escapeHTML(item.nota || 'Atención garantizada por el Dr. Jorge Castillo MVZ.')}</div>
             <div class="vet-card-foot">
-              <span class="vet-price">${esc(money(p.precio))} <small>/ servicio</small></span>
+              <div class="vet-price">${Number(item.precio)} <small>BOB</small></div>
               <div class="vet-card-actions">
-                <button type="button" class="btn btn-ghost btn-sm" data-acordeon="${p.id}">ℹ️ Detalles</button>
-                <button type="button" class="btn btn-accent btn-sm" data-add="${p.id}">+ Añadir</button>
+                <button type="button" class="btn btn-ghost btn-xs" data-action="info" data-id="${escapeHTML(item.id)}">ℹ️ Info</button>
+                <button type="button" class="btn btn-primary btn-xs" data-action="agregar" data-id="${escapeHTML(item.id)}">+ Cotizar</button>
               </div>
             </div>
           </div>
         </article>`;
-      }).join('');
+      $grid.append(html);
+    });
 
-      $$('#vetGrid img').forEach((img) => {
-        img.addEventListener('error', () => manejarErrorImagen(img, img.dataset.fallbackEmoji));
+    aplicarRespaldoImagenes($grid[0]);
+  };
+
+  $('#vetFiltros').on('click', '.chip', function () {
+    categoriaActiva = $(this).data('cat') || 'todos';
+    $('#vetCascadeArea').val(categoriaActiva);
+    actualizarSelectCascada(categoriaActiva);
+    renderChipsCategorias();
+    filtrarCatalogo();
+    registrarBitacora('Filtro por chip', CATEGORIAS[categoriaActiva] || categoriaActiva);
+  });
+
+  $('#vetCascadeArea').on('change', function () {
+    categoriaActiva = $(this).val() || 'todos';
+    actualizarSelectCascada(categoriaActiva);
+    renderChipsCategorias();
+    filtrarCatalogo();
+    registrarBitacora('Filtro cascada (Área)', CATEGORIAS[categoriaActiva] || categoriaActiva);
+  });
+
+  $('#vetCascadeSub').on('change', function () {
+    subfiltroCascada = $(this).val() || 'todos';
+    filtrarCatalogo();
+    registrarBitacora('Filtro cascada (Rango)', subfiltroCascada);
+  });
+
+  let debounceBusqueda = null;
+  $('#vetBusqueda').on('input', function () {
+    textoBusqueda = $(this).val();
+    clearTimeout(debounceBusqueda);
+    debounceBusqueda = setTimeout(() => {
+      filtrarCatalogo();
+      if (limpiar(textoBusqueda)) {
+        registrarBitacora('Búsqueda en catálogo', limpiar(textoBusqueda));
+      }
+    }, 160);
+  });
+
+  $('#vetGrid').on('click', '[data-action]', function () {
+    const accion = $(this).data('action');
+    const id = $(this).data('id');
+    const item = CATALOGO.find((x) => x.id === id);
+    if (!item) return;
+
+    if (accion === 'info') {
+      $(this).closest('.vet-card').find('.vet-card-acordeon').slideToggle(180);
+      registrarBitacora('Especificación desplegada', item.nombre);
+    } else if (accion === 'detalle') {
+      servicioDetalleActual = item;
+      $('#vetDetailCat').text(CATEGORIAS[item.categoria] || item.categoria);
+      $('#vetDetailName').text(item.nombre);
+      const $detailImg = $('#vetDetailImg');
+      delete $detailImg[0].dataset.fallbackApplied;
+      $detailImg.attr({ src: item.imagen, alt: item.nombre });
+      aplicarRespaldoImagenes('#vetDetailModal');
+      $('#vetDetailDesc').text(item.descripcion);
+      $('#vetDetailNota').text(item.nota || '');
+      $('#vetDetailPrice').text(`${item.precio} BOB`);
+      abrirModalSeguro('#vetDetailModal');
+      registrarBitacora('Vista de detalle', item.nombre);
+    } else if (accion === 'agregar') {
+      agregarAlCarrito(item);
+    }
+  });
+
+  $('#vetDetailAdd').on('click', function () {
+    if (!servicioDetalleActual) return;
+    agregarAlCarrito(servicioDetalleActual);
+    cerrarModalSeguro('#vetDetailModal');
+  });
+
+  /* ==========================================================================
+     8. COTIZADOR, CARRITO INTERACTIVO Y RESUMEN CON TEMPORIZADOR
+     ========================================================================== */
+  const obtenerCarrito = () => leerJSON(STORAGE.carrito, []);
+  const guardarCarrito = (lista) => guardarJSON(STORAGE.carrito, lista);
+
+  const renderCarrito = () => {
+    const carrito = obtenerCarrito();
+    let totalItems = 0;
+    let totalBOB = 0;
+    const $lista = $('#vetCartList').empty();
+
+    if (!carrito.length) {
+      $lista.append('<li class="muted small">Aún no seleccionaste servicios. Añade desde el catálogo.</li>');
+    } else {
+      carrito.forEach((it) => {
+        const sub = Number(it.precio) * Number(it.cantidad);
+        totalItems += Number(it.cantidad);
+        totalBOB += sub;
+        $lista.append(`
+          <li class="vet-cart-item" data-id="${escapeHTML(it.id)}">
+            <div>
+              <strong>${escapeHTML(it.nombre)}</strong>
+              <small>${it.precio} BOB c/u</small>
+            </div>
+            <div class="vet-qty">
+              <button type="button" data-qty="-1" aria-label="Disminuir">−</button>
+              <span>${it.cantidad}</span>
+              <button type="button" data-qty="1" aria-label="Aumentar">+</button>
+            </div>
+            <span class="vet-item-total">${sub} BOB</span>
+          </li>`);
       });
     }
 
-    const info = $('#vetResultInfo');
-    if (info) {
-      const cat = filtro.cat === 'todos'
-        ? 'todas las categorías'
-        : (CATS.find((c) => c.id === filtro.cat) || {}).label || filtro.cat;
-      info.textContent = `Mostrando ${lista.length} de ${CATALOGO.length} resultados · ${cat}${filtro.q ? ` · búsqueda: “${filtro.q}”` : ''}`;
-    }
+    $('#vetCartCount').text(totalItems);
+    $('#vetCartTotal, #vetCartSubtotal').text(`${totalBOB} BOB`);
+  };
 
-    renderFiltros();
-  }
-
-  function renderCarrito() {
-    const lista = $('#vetCartList');
-    const { detalle, items, total } = totales();
-    if (!lista) return;
-
-    if (!detalle.length) {
-      lista.innerHTML = `
-        <li class="empty">
-          <span class="empty-icon">🛒</span>
-          <strong>Tu cotizador está vacío</strong>
-          <span>Añade servicios desde el catálogo.</span>
-        </li>`;
+  const agregarAlCarrito = (item) => {
+    const carrito = obtenerCarrito();
+    const existente = carrito.find((x) => x.id === item.id);
+    if (existente) {
+      existente.cantidad += 1;
     } else {
-      lista.innerHTML = detalle.map((p) => `
-        <li class="vet-cart-item">
-          <div>
-            <strong>${esc(p.emoji || '🐾')} ${esc(p.nombre)}</strong>
-            <small>${esc(p.catLabel || p.categoria)} · ${esc(money(p.precio))} c/u</small>
-          </div>
-          <div class="vet-qty" aria-label="Cantidad de ${esc(p.nombre)}">
-            <button type="button" data-qty="${p.id}" data-step="-1" aria-label="Quitar uno">−</button>
-            <span>${p.qty}</span>
-            <button type="button" data-qty="${p.id}" data-step="1" aria-label="Añadir uno">+</button>
-          </div>
-          <span class="vet-item-total">${esc(money(p.subtotal))}</span>
-        </li>`).join('');
+      carrito.push({
+        id: item.id,
+        nombre: item.nombre,
+        precio: Number(item.precio),
+        cantidad: 1
+      });
     }
-
-    $('#vetCartCount').textContent = String(items);
-    $('#vetCartTotal').textContent = App.money(total);
-    $('#vetCartSubtotal').textContent = money(total);
-  }
-
-  function agregar(id) {
-    const p = producto(id);
-    if (!p) return;
-    const existente = carrito.find((i) => i.id === p.id);
-    if (existente) existente.qty = App.clamp(existente.qty + 1, 1, 99);
-    else carrito.push({ id: p.id, qty: 1 });
-    guardarCarrito();
+    guardarCarrito(carrito);
     renderCarrito();
-    mostrarToastUI(`🐾 “${p.nombre}” añadido al cotizador (${money(p.precio)}).`, 'ok');
-    logEvento(`Añadió “${p.nombre}” (${money(p.precio)}) al cotizador.`, 'ok');
-  }
+    mostrarToast(`🛒 Añadido: ${item.nombre} (${item.precio} BOB)`);
+    registrarBitacora('Añadido al cotizador', `${item.nombre} (${item.precio} BOB)`);
+  };
 
-  function cambiarCantidad(id, paso) {
-    const linea = carrito.find((i) => i.id === Number(id));
-    if (!linea) return;
-    linea.qty = App.clamp(linea.qty + Number(paso), 0, 99);
-    if (linea.qty <= 0) {
-      carrito = carrito.filter((i) => i.id !== Number(id));
-      const p = producto(id);
-      mostrarToastUI(`“${p ? p.nombre : 'Ítem'}” eliminado del cotizador.`, 'warn');
+  $('#vetCartList').on('click', '[data-qty]', function () {
+    const delta = Number($(this).data('qty'));
+    const id = $(this).closest('.vet-cart-item').data('id');
+    const carrito = obtenerCarrito();
+    const idx = carrito.findIndex((x) => x.id === id);
+    if (idx === -1) return;
+    carrito[idx].cantidad += delta;
+    if (carrito[idx].cantidad <= 0) carrito.splice(idx, 1);
+    guardarCarrito(carrito);
+    renderCarrito();
+    registrarBitacora('Cantidad ajustada en cotizador', id);
+  });
+
+  $('#vetCartClear').on('click', () => {
+    guardarCarrito([]);
+    renderCarrito();
+    mostrarToast('🗑️ Cotizador vaciado', 'warn');
+    registrarBitacora('Cotizador vaciado');
+  });
+
+  $('#vetCalcSesiones').on('input change', function () {
+    const n = Math.max(1, Math.min(20, Number($(this).val()) || 1));
+    $('#vetCalcTotalRapido').text(`${n * 30} BOB`);
+  });
+
+  const validarDatosPaciente = () => {
+    const mascota = limpiar($('#vetPet').val());
+    const especie = $('#vetSpecies').val();
+    const tutor = limpiar($('#vetOwner').val());
+    const cel = limpiar($('#vetPhone').val());
+    const $err = $('#vetPatientError').text('');
+
+    if (!mascota) {
+      $err.text('Ingresa el nombre de tu mascota para generar la cotización.');
+      return null;
     }
-    guardarCarrito();
-    renderCarrito();
-  }
+    if (!esSoloLetras(tutor)) {
+      $err.text('Ingresa el nombre del tutor (solo letras, mínimo 2 caracteres).');
+      return null;
+    }
+    if (!esTelefonoValido(cel)) {
+      $err.text('Ingresa un celular boliviano válido de 8 dígitos (iniciando en 6 o 7).');
+      return null;
+    }
+    return { mascota, especie, tutor, cel };
+  };
 
-  function vaciar() {
+  const construirTextoCotizacion = (datos, carrito) => {
+    const total = carrito.reduce((acc, it) => acc + it.precio * it.cantidad, 0);
+    const lineas = carrito
+      .map((it) => `• ${it.nombre} (x${it.cantidad}): ${it.precio * it.cantidad} BOB`)
+      .join('\n');
+    return `🐾 *Cotización Clínica Veterinaria Don Gato*\nTutor: ${datos.tutor} (${datos.cel})\nPaciente: ${datos.mascota} (${datos.especie})\n\n*Detalle:*\n${lineas}\n\n*Total estimado:* ${total} BOB`;
+  };
+
+  $('#vetConfirm').on('click', () => {
+    const carrito = obtenerCarrito();
     if (!carrito.length) {
-      mostrarToastUI('El cotizador ya está vacío.', 'warn');
+      $('#vetPatientError').text('Añade al menos un servicio del catálogo antes de generar el resumen.');
       return;
     }
-    carrito = [];
-    guardarCarrito();
-    renderCarrito();
-    mostrarToastUI('Cotizador vaciado correctamente.', 'warn');
-    logEvento('Vació el cotizador.', 'warn');
-  }
+    const datos = validarDatosPaciente();
+    if (!datos) return;
 
-  function datosPaciente() {
-    return {
-      mascota: ($('#vetPet').value || '').trim(),
-      especie: $('#vetSpecies').value || '',
-      cliente: ($('#vetOwner').value || '').trim() || aliasActual(),
-      telefono: ($('#vetPhone').value || '').trim()
-    };
-  }
+    const total = carrito.reduce((acc, it) => acc + it.precio * it.cantidad, 0);
+    const filas = carrito
+      .map((it) => `<li>${escapeHTML(it.nombre)} × ${it.cantidad} — <strong>${it.precio * it.cantidad} BOB</strong></li>`)
+      .join('');
 
-  function mensajeCotizacion() {
-    const { detalle, total } = totales();
-    const datos = datosPaciente();
-    const lineas = detalle.map((p) => `• ${p.qty}x ${p.nombre} — ${money(p.subtotal)}`).join('\n');
-    return [
-      '🐾 *Cotización — Clínica Veterinaria Don Gato*',
-      `Tutor: ${datos.cliente || 'No indicado'}`,
-      datos.mascota ? `Mascota: ${datos.mascota}${datos.especie ? ` (${datos.especie})` : ''}` : '',
-      datos.telefono ? `Celular: ${datos.telefono}` : '',
-      '',
-      '*Servicios y productos:*',
-      lineas,
-      '',
-      `💰 *TOTAL ESTIMADO: ${money(total)}*`,
-      '📍 Miraflores, Av. Pasoskanqui esq. Brasil #1627 · La Paz'
-    ].filter(Boolean).join('\n');
-  }
+    $('#vetResumenBody').html(`
+      <p><strong>Paciente:</strong> ${escapeHTML(datos.mascota)} (${escapeHTML(datos.especie)})</p>
+      <p><strong>Tutor:</strong> ${escapeHTML(datos.tutor)} · ${escapeHTML(datos.cel)}</p>
+      <ul class="mt-1 mb-1">${filas}</ul>
+      <p class="vet-detail-price">Total: ${total} BOB</p>
+    `);
 
-  /* ============================================================
-     TEMPORIZADOR ASÍNCRONO DE 30 SEGUNDOS (setInterval + fadeOut)
-     ============================================================ */
-  function detenerTemporizadorResumen() {
-    if (timerCotizacion) {
-      clearInterval(timerCotizacion);
-      timerCotizacion = null;
-    }
-  }
-
-  function iniciarTemporizadorResumen() {
-    detenerTemporizadorResumen();
-    let segundos = 30;
-    const reloj = $('#vetResumenTimer');
-    if (reloj) reloj.textContent = '00:30s';
-
-    timerCotizacion = setInterval(() => {
-      segundos -= 1;
-      if (reloj) {
-        reloj.textContent = `00:${String(Math.max(0, segundos)).padStart(2, '0')}s`;
-      }
-      if (segundos <= 0) {
-        detenerTemporizadorResumen();
-        if (window.jQuery) {
-          window.jQuery('#vetResumenModal').fadeOut(250, () => {
-            App.closeModal('vetResumenModal');
-            window.jQuery('#vetResumenModal').css('display', '');
-          });
-        } else {
-          App.closeModal('vetResumenModal');
-        }
-        mostrarToastUI('⏳ Tarifa Flash Expirada (30s). Genera el resumen nuevamente.', 'warn');
-        logEvento('Expiró el temporizador de 30s en el modal de resumen.', 'warn');
+    clearInterval(timerResumen);
+    segundosRestantes = 30;
+    $('#vetResumenTimer').text('00:30s');
+    timerResumen = setInterval(() => {
+      segundosRestantes -= 1;
+      if (segundosRestantes <= 0) {
+        clearInterval(timerResumen);
+        $('#vetResumenTimer').text('Expirado');
+      } else {
+        $('#vetResumenTimer').text(`00:${String(segundosRestantes).padStart(2, '0')}s`);
       }
     }, 1000);
-  }
 
-  /* ============================================================
-     CONSTRUCCIÓN SEGURA DEL RESUMEN (ANTI-XSS CON textContent)
-     ============================================================ */
-  function construirResumenDOM(datos, detalle, total) {
-    const cont = $('#vetResumenBody');
-    cont.textContent = '';
-
-    const wrap = document.createElement('div');
-    wrap.className = 'stack';
-
-    const ficha = document.createElement('div');
-    ficha.className = 'card card-pad';
-    ficha.style.boxShadow = 'none';
-    ficha.style.background = 'var(--bg-panel)';
-
-    const crearFila = (etiqueta, valor) => {
-      const row = document.createElement('div');
-      row.className = 'row-between';
-      const lbl = document.createElement('span');
-      lbl.className = 'muted small';
-      lbl.textContent = etiqueta;
-      const val = document.createElement('strong');
-      val.textContent = valor;
-      row.append(lbl, val);
-      return row;
-    };
-
-    ficha.appendChild(crearFila('Tutor', datos.cliente || 'No indicado'));
-    ficha.appendChild(crearFila('Mascota', `${datos.mascota || 'No indicada'}${datos.especie ? ` · ${datos.especie}` : ''}`));
-    if (datos.telefono) {
-      ficha.appendChild(crearFila('Celular', datos.telefono));
-    }
-
-    const listaItems = document.createElement('div');
-    listaItems.className = 'stack';
-    detalle.forEach((p) => {
-      const row = document.createElement('div');
-      row.className = 'row-between small';
-      const nombre = document.createElement('span');
-      nombre.textContent = `${p.qty}x ${p.nombre}`;
-      const sub = document.createElement('strong');
-      sub.textContent = money(p.subtotal);
-      row.append(nombre, sub);
-      listaItems.appendChild(row);
-    });
-
-    const totalRow = document.createElement('div');
-    totalRow.className = 'vet-total-row';
-    const totalLbl = document.createElement('span');
-    totalLbl.textContent = 'Total estimado';
-    const totalVal = document.createElement('strong');
-    totalVal.textContent = money(total);
-    totalRow.append(totalLbl, totalVal);
-
-    const nota = document.createElement('p');
-    nota.className = 'small muted';
-    nota.textContent = `Referencia generada el ${App.dateTime()}. Los precios pueden variar según el tamaño y la condición del paciente.`;
-
-    wrap.append(ficha, listaItems, totalRow, nota);
-    cont.appendChild(wrap);
-  }
-
-  function confirmar() {
-    const { detalle, items, total } = totales();
-    if (!detalle.length) {
-      mostrarToastUI('Añade al menos un servicio antes de confirmar.', 'warn');
-      return;
-    }
-
-    const datos = datosPaciente();
-    const celular = datos.telefono.replace(/[\s().-]/g, '');
-    const formatoOk = !celular || /^\d{7,8}$/.test(celular);
-    const datosOk = window.Validacion
-      ? Validacion.validarCampos([$('#vetPet'), $('#vetOwner'), $('#vetPhone')]) && formatoOk
-      : formatoOk;
-
-    if (!datosOk) {
-      const box = $('#vetPatientError');
-      box.textContent = 'Revisa los datos marcados: usa nombres reales y un celular de 7 u 8 dígitos.';
-      mostrarToastUI('Corrige los datos marcados en rojo.', 'warn');
-      return;
-    }
-    $('#vetPatientError').textContent = '';
-
-    ultimaCotizacion = {
-      cliente: datos.cliente,
-      mascota: datos.mascota,
-      especie: datos.especie,
-      telefono: datos.telefono,
-      items: detalle.map((p) => ({ nombre: p.nombre, qty: p.qty, precio: p.precio, subtotal: p.subtotal })),
-      total,
-      cantidad: items
-    };
-
-    construirResumenDOM(datos, detalle, total);
-
-    logVenta({
-      cliente: datos.cliente || aliasActual(),
-      mascota: datos.mascota,
-      especie: datos.especie,
-      telefono: datos.telefono,
-      items: ultimaCotizacion.items,
-      total
-    });
-    logEvento(`Generó resumen de cotización por ${money(total)} (${items} ítem/s).`, 'ok');
-
-    App.openModal('vetResumenModal');
-    iniciarTemporizadorResumen();
-  }
-
-  function enviarWhatsapp() {
-    detenerTemporizadorResumen();
-    const { detalle } = totales();
-    if (!detalle.length) {
-      mostrarToastUI('El cotizador está vacío.', 'warn');
-      return;
-    }
-    const url = 'https://wa.me/' + WA_NUMBER + '?text=' + encodeURIComponent(mensajeCotizacion());
-    window.open(url, '_blank', 'noopener');
-    logEvento('Envió la cotización por WhatsApp.', 'info');
-    mostrarToastUI('💬 Abriendo WhatsApp con tu cotización...', 'ok');
-  }
-
-  function abrirDetalle(id) {
-    const p = producto(id);
-    if (!p) return;
-    detalleActual = p.id;
-    $('#vetDetailCat').textContent = p.catLabel || p.categoria;
-    $('#vetDetailName').textContent = p.nombre;
-    $('#vetDetailDesc').textContent = p.detalle;
-    $('#vetDetailNota').textContent = p.nota ? 'ℹ️ ' + p.nota : 'Atención personalizada en clínica.';
-    $('#vetDetailPrice').textContent = money(p.precio);
-    const img = $('#vetDetailImg');
-    delete img.dataset.extTry;
-    img.onerror = () => manejarErrorImagen(img, p.emoji || '🐾');
-    img.src = resolverImagen(p);
-    img.alt = p.nombre;
-    App.openModal('vetDetailModal');
-    logEvento(`Consultó la ficha de “${p.nombre}”.`, 'info');
-  }
-
-  function actualizarAliasUI() {
-    const alias = aliasActual();
-    $('#vetAliasDisplay').textContent = esAdmin() ? 'ADMIN' : alias;
-    const input = $('#vetAliasInput');
-    if (input && alias !== 'Invitado') input.value = alias;
-    if (alias !== 'Invitado') {
-      if (!$('#vetOwner').value) $('#vetOwner').value = alias;
-      if (!$('#citaTutor').value) $('#citaTutor').value = alias;
-    }
-  }
-
-  function guardarAlias(valor, desdeModal) {
-    const alias = String(valor || '').trim().slice(0, 40);
-    if (!alias) {
-      mostrarToastUI('Escribe un alias válido.', 'warn');
-      return;
-    }
-    App.store.set(KEYS.alias, alias);
-    actualizarAliasUI();
-    $('#vetAliasInput').value = alias;
-    $('#vetOwner').value = alias;
-    $('#citaTutor').value = alias;
-    logEvento(`Guardó su alias como “${alias}”.`, 'ok');
-    mostrarToastUI(`¡Bienvenido(a), ${alias}! 🐾`, 'ok');
-    if (desdeModal) App.closeModal('vetCuentaModal');
-  }
-
-  function aplicarAdminUI() {
-    const admin = esAdmin();
-    document.body.classList.toggle('is-admin', admin);
-    const btn = $('[data-open-modal="vetCuentaModal"]');
-    if (btn) btn.textContent = admin ? '👑 Admin' : '👤 Mi cuenta';
-    const logout = $('#vetAdminLogout');
-    if (logout) logout.classList.toggle('hidden', !admin);
-    const adminForm = $('#vetAdminForm');
-    if (adminForm) adminForm.classList.toggle('hidden', admin);
-    if (admin) {
-      renderAdmin();
-      mostrarToastUI('Modo administrador activo. Bitácoras desbloqueadas.', 'ok');
-    }
-  }
-
-  function loginAdmin(event) {
-    event.preventDefault();
-    const user = ($('#vetAdminUser').value || '').trim().toLowerCase();
-    const pass = ($('#vetAdminPass').value || '').trim();
-    const error = $('#vetAdminError');
-    const valido = (user === 'admin' && (pass === 'admin123' || pass === 'vet2026'))
-      || (user === 'vet' && pass === 'vet2026');
-
-    if (!valido) {
-      error.textContent = 'Usuario o contraseña incorrectos. Usa admin / admin123.';
-      $('#vetAdminUser').classList.add('invalid');
-      $('#vetAdminPass').classList.add('invalid');
-      logEvento(`Intento de acceso admin fallido (usuario “${user || 'vacío'}”).`, 'error');
-      return;
-    }
-
-    error.textContent = '';
-    $$('#vetAdminForm .input').forEach((i) => i.classList.remove('invalid'));
-    setAdmin(true);
-    aplicarAdminUI();
-    App.closeModal('vetCuentaModal');
-    $('#vetAdminForm').reset();
-    logEvento('El administrador inició sesión.', 'ok');
-  }
-
-  function logoutAdmin() {
-    setAdmin(false);
-    document.body.classList.remove('is-admin');
-    aplicarAdminUI();
-    App.closeModal('vetCuentaModal');
-    mostrarToastUI('Sesión de administrador cerrada.', 'warn');
-    logEvento('El administrador cerró sesión.', 'info');
-  }
-
-  function solicitarCita(event) {
-    event.preventDefault();
-    const tutor = ($('#citaTutor').value || '').trim();
-    const mascota = ($('#citaMascota').value || '').trim();
-    const celular = ($('#citaCelular').value || '').trim();
-    const fecha = $('#citaFecha').value;
-    const servicio = $('#citaServicio').value;
-    const notas = ($('#citaNotas').value || '').trim();
-    const error = $('#vetCitaError');
-    const alertaBox = $('#alertaCitaBox');
-
-    const invalidos = [];
-    if (!tutor) invalidos.push(['citaTutor', 'el nombre del tutor']);
-    if (!mascota) invalidos.push(['citaMascota', 'el nombre de la mascota']);
-    if (!/^\d{8}$/.test(celular)) invalidos.push(['citaCelular', 'un celular de 8 dígitos']);
-    if (!fecha) invalidos.push(['citaFecha', 'una fecha']);
-
-    $$('#vetCitaForm .input').forEach((i) => i.classList.remove('invalid'));
-    if (invalidos.length) {
-      invalidos.forEach(([id]) => { const el = $('#' + id); if (el) el.classList.add('invalid'); });
-      const textoErr = 'Revisa ' + invalidos.map(([, label]) => label).join(', ') + '.';
-      error.textContent = textoErr;
-      if (alertaBox) {
-        alertaBox.textContent = '';
-        const spanErr = document.createElement('span');
-        spanErr.className = 'msg-error';
-        spanErr.textContent = '⚠ ' + textoErr;
-        alertaBox.appendChild(spanErr);
-      }
-      mostrarToastUI('Completa los campos obligatorios de la cita.', 'warn');
-      return;
-    }
-    error.textContent = '';
-
-    const mensaje = [
-      '📅 *Solicitud de cita — Don Gato*',
-      `Tutor: ${tutor}`,
-      `Mascota: ${mascota}`,
-      `Celular: ${celular}`,
-      `Servicio: ${servicio}`,
-      `Fecha preferida: ${fecha}`,
-      notas ? `Notas: ${notas}` : ''
-    ].filter(Boolean).join('\n');
-
-    logEvento(`Solicitó cita para ${mascota} (${servicio}) el ${fecha}.`, 'ok');
-    mostrarToastUI('📅 Cita registrada en Supabase y lista para WhatsApp.', 'ok');
-
-    if (alertaBox) {
-      alertaBox.textContent = '';
-      const spanOk = document.createElement('span');
-      spanOk.className = 'msg-exito';
-      spanOk.textContent = `✓ Cita para ${mascota} (${fecha}) registrada correctamente.`;
-      alertaBox.appendChild(spanOk);
-    }
-
-    if (window.SupabaseDW2) {
-      window.SupabaseDW2.guardar('citas_veterinaria', {
-        tutor: tutor,
-        mascota: mascota,
-        celular: celular,
-        servicio: servicio || null,
-        fecha: fecha,
-        notas: notas || null
-      });
-    }
-
-    window.open('https://wa.me/' + WA_NUMBER + '?text=' + encodeURIComponent(mensaje), '_blank', 'noopener');
-
-    $('#citaMascota').value = '';
-    $('#citaCelular').value = '';
-    $('#citaNotas').value = '';
-  }
-
-  function actualizarEstadoRed() {
-    const badge = $('#estadoRed');
-    if (badge) {
-      const online = navigator.onLine;
-      badge.textContent = online ? 'En Línea' : 'Modo Offline Activo';
-      badge.classList.toggle('is-offline', !online);
-    }
-    if (navigator.onLine && window.SupabaseDW2 && typeof window.SupabaseDW2.sincronizar === 'function') {
-      window.SupabaseDW2.sincronizar().catch(() => {});
-    }
-  }
-
-  function configurarInstalacionPWA() {
-    let promptInstalacion = null;
-    const btnInstalar = $('#btnInstalarPWA');
-    window.addEventListener('beforeinstallprompt', (e) => {
-      e.preventDefault();
-      promptInstalacion = e;
-      if (btnInstalar) btnInstalar.hidden = false;
-    });
-    if (btnInstalar) {
-      btnInstalar.addEventListener('click', async () => {
-        if (!promptInstalacion) return;
-        promptInstalacion.prompt();
-        await promptInstalacion.userChoice;
-        promptInstalacion = null;
-        btnInstalar.hidden = true;
-      });
-    }
-  }
-
-  /* ============================================================
-     DELEGACIÓN DE EVENTOS CON jQuery (.off().on()) Y DOM
-     ============================================================ */
-  function enlazarEventos() {
-    if (window.jQuery) {
-      const $doc = window.jQuery(document);
-
-      // 1. Menú hamburguesa con .slideToggle()
-      $doc.off('click.vetNav', '#burguerBtn').on('click.vetNav', '#burguerBtn', function () {
-        const $menu = window.jQuery('#vetMobileNav');
-        $menu.stop(true, true).slideToggle(240, function () {
-          const visible = $menu.is(':visible');
-          window.jQuery('#burguerBtn').attr('aria-expanded', String(visible));
-        });
-      });
-
-      // 2. Búsqueda en tiempo real por teclado (keyup)
-      $doc.off('keyup.vetSearch search.vetSearch', '#vetBusqueda').on('keyup.vetSearch search.vetSearch', '#vetBusqueda', function () {
-        filtro.q = window.jQuery(this).val() || '';
-        renderCatalogo();
-      });
-
-      // 3. Filtro en cascada (Área -> Rango de precio)
-      $doc.off('change.vetCascade1', '#vetCascadeArea').on('change.vetCascade1', '#vetCascadeArea', function () {
-        const area = window.jQuery(this).val();
-        filtro.cat = area;
-        filtro.rango = 'todos';
-        const $sub = window.jQuery('#vetCascadeSub');
-        if (area === 'todos') {
-          $sub.html('<option value="todos">-- Primero elige un área --</option>').prop('disabled', true);
-        } else {
-          $sub.prop('disabled', false).html([
-            '<option value="todos">Todos los precios</option>',
-            '<option value="economico">Hasta 50 BOB</option>',
-            '<option value="medio">De 51 a 120 BOB</option>',
-            '<option value="especializado">Más de 120 BOB</option>'
-          ].join(''));
-        }
-        renderCatalogo();
-        logEvento(`Seleccionó área en cascada: “${area}”.`, 'info');
-      });
-
-      $doc.off('change.vetCascade2', '#vetCascadeSub').on('change.vetCascade2', '#vetCascadeSub', function () {
-        filtro.rango = window.jQuery(this).val() || 'todos';
-        renderCatalogo();
-        logEvento(`Aplicó subfiltro de precio: “${filtro.rango}”.`, 'info');
-      });
-
-      // 4. Delegación por Event Bubbling en tarjetas del catálogo
-      $doc.off('click.vetCat', '#vetFiltros [data-cat]').on('click.vetCat', '#vetFiltros [data-cat]', function () {
-        filtro.cat = window.jQuery(this).data('cat');
-        window.jQuery('#vetCascadeArea').val(filtro.cat);
-        renderCatalogo();
-        logEvento(`Filtró el catálogo por “${filtro.cat}”.`, 'info');
-      });
-
-      $doc.off('click.vetAcordeon', '#vetGrid [data-acordeon]').on('click.vetAcordeon', '#vetGrid [data-acordeon]', function (e) {
-        e.stopPropagation();
-        const $card = window.jQuery(this).closest('.vet-card');
-        $card.find('.vet-card-acordeon').stop(true, true).slideToggle('slow');
-        const id = window.jQuery(this).data('acordeon');
-        const p = producto(id);
-        if (p) logEvento(`Desplegó especificaciones de “${p.nombre}”.`, 'info');
-      });
-
-      $doc.off('click.vetAdd', '#vetGrid [data-add]').on('click.vetAdd', '#vetGrid [data-add]', function (e) {
-        e.stopPropagation();
-        agregar(window.jQuery(this).data('add'));
-      });
-
-      $doc.off('click.vetDetail', '#vetGrid [data-detail]').on('click.vetDetail', '#vetGrid [data-detail]', function (e) {
-        e.stopPropagation();
-        abrirDetalle(window.jQuery(this).data('detail'));
-      });
-
-      $doc.off('click.vetReset', '#vetGrid [data-reset-filtros]').on('click.vetReset', '#vetGrid [data-reset-filtros]', function () {
-        filtro = { cat: 'todos', rango: 'todos', q: '' };
-        window.jQuery('#vetBusqueda').val('');
-        window.jQuery('#vetCascadeArea').val('todos');
-        window.jQuery('#vetCascadeSub').html('<option value="todos">-- Primero elige un área --</option>').prop('disabled', true);
-        renderCatalogo();
-      });
-
-      $doc.off('click.vetCard', '#vetGrid .vet-card').on('click.vetCard', '#vetGrid .vet-card', function (e) {
-        if (window.jQuery(e.target).closest('button').length) return;
-        abrirDetalle(window.jQuery(this).data('id'));
-      });
-
-      // 5. Calculador rápido con .animate()
-      $doc.off('input.vetCalc', '#vetCalcSesiones').on('input.vetCalc', '#vetCalcSesiones', function () {
-        const cant = Math.max(1, Math.min(20, Number(window.jQuery(this).val()) || 1));
-        const monto = cant * 30;
-        window.jQuery('#vetCalcTotalRapido')
-          .text(monto + ' BOB')
-          .stop(true, true)
-          .animate({ opacity: 0.45 }, 110)
-          .animate({ opacity: 1 }, 180);
-      });
-
-      // 6. Controles del carrito y confirmación del modal
-      $doc.off('click.vetQty', '#vetCartList [data-qty]').on('click.vetQty', '#vetCartList [data-qty]', function () {
-        cambiarCantidad(window.jQuery(this).data('qty'), window.jQuery(this).data('step'));
-      });
-
-      $doc.off('click.vetConfirmModal', '#vetResumenConfirmar').on('click.vetConfirmModal', '#vetResumenConfirmar', function () {
-        detenerTemporizadorResumen();
-        App.closeModal('vetResumenModal');
-        mostrarToastUI('✅ Reserva de cotización confirmada con éxito.', 'ok');
-        logEvento('Confirmó la reserva dentro del tiempo límite de 30s.', 'ok');
-      });
-    }
-
-    $('#vetGrid').addEventListener('keydown', (event) => {
-      if (event.key !== 'Enter' && event.key !== ' ') return;
-      const card = event.target.closest('.vet-card');
-      if (card) { event.preventDefault(); abrirDetalle(card.dataset.id); }
-    });
-
-    $('#vetCartClear').addEventListener('click', vaciar);
-    $('#vetConfirm').addEventListener('click', confirmar);
-    $('#vetWhatsapp').addEventListener('click', enviarWhatsapp);
-    $('#vetResumenWa').addEventListener('click', enviarWhatsapp);
-
-    $('#vetDetailAdd').addEventListener('click', () => {
-      if (detalleActual != null) agregar(detalleActual);
-      App.closeModal('vetDetailModal');
-    });
-
-    $('#vetAliasForm').addEventListener('submit', (event) => {
-      event.preventDefault();
-      guardarAlias($('#vetAliasInput').value, false);
-    });
-
-    $('#vetClientForm').addEventListener('submit', (event) => {
-      event.preventDefault();
-      guardarAlias($('#vetClientAlias').value, true);
-    });
-
-    $('#vetAdminForm').addEventListener('submit', loginAdmin);
-    $('#vetAdminLogout').addEventListener('click', logoutAdmin);
-    $('#vetCitaForm').addEventListener('submit', solicitarCita);
-
-    $('#btnLimpiarLiveLog').addEventListener('click', () => {
-      const salida = $('#logOutput');
-      if (salida) salida.innerHTML = '<div>[Sistema] Consola limpia. Esperando nuevas interacciones...</div>';
-    });
-
-    $('#vetRefreshLogs').addEventListener('click', () => {
-      renderAdmin();
-      mostrarToastUI('Bitácoras actualizadas.', 'ok');
-    });
-
-    $('#vetClearLogs').addEventListener('click', () => {
-      if (!esAdmin()) return;
-      if (!window.confirm('¿Limpiar todas las bitácoras de eventos y ventas?')) return;
-      App.store.remove(KEYS.eventos);
-      App.store.remove(KEYS.ventas);
-      renderAdmin();
-      mostrarToastUI('Bitácoras liberadas correctamente.', 'warn');
-    });
-
-    document.addEventListener('click', (event) => {
-      if (event.target.closest('[data-close-modal]') || event.target.id === 'vetResumenModal') {
-        detenerTemporizadorResumen();
-      }
-    });
-
-    document.addEventListener('keydown', (event) => {
-      if (event.key === 'Escape') {
-        detenerTemporizadorResumen();
-        App.closeAllModals();
-      }
-    });
-  }
-
-  function observadorSecciones() {
-    if (!('IntersectionObserver' in window)) return;
-    const links = $$('.vet-links a');
-    const secciones = ['inicio', 'catalogo', 'cotizador', 'citas', 'auditoria']
-      .map((id) => document.getElementById(id))
-      .filter(Boolean);
-    const observer = new IntersectionObserver((entries) => {
-      entries.forEach((entry) => {
-        if (!entry.isIntersecting) return;
-        links.forEach((link) => {
-          link.classList.toggle('active', link.getAttribute('href') === '#' + entry.target.id);
-        });
-      });
-    }, { rootMargin: '-45% 0px -50% 0px', threshold: 0 });
-    secciones.forEach((s) => observer.observe(s));
-  }
-
-  function desdeJson(p) {
-    const cat = CATS.find((c) => c.id === p.categoria);
-    const base = {
-      id: Number(p.id),
-      nombre: String(p.nombre || '').trim(),
-      categoria: String(p.categoria || ''),
-      catLabel: p.catLabel || (cat ? cat.label : ''),
-      detalle: p.detalle || '',
-      precio: Number(p.precio) || 0,
-      emoji: p.emoji || (cat ? cat.emoji : '🐾'),
-      img: p.img || '',
-      nota: p.nota || ''
-    };
-    base.img = resolverImagen(base);
-    return base;
-  }
-
-  function syncCatalogoFromJson() {
-    if (typeof App.fetchCatalog !== 'function') return;
-
-    App.fetchCatalog('data/catalogo.json').then((lista) => {
-      if (!lista) return;
-
-      const limpio = lista.map(desdeJson).filter((p) => p.id && p.nombre);
-      if (!limpio.length) return;
-
-      CATALOGO.length = 0;
-      limpio.forEach((p) => CATALOGO.push(p));
-
-      const stat = $('#vetStatServicios');
-      if (stat) stat.textContent = String(CATALOGO.length);
-      renderCatalogo();
-    });
-  }
-
-  function hidratarInterfaz() {
-    if (document.body.dataset.hidratado === 'true') return;
-    document.body.dataset.hidratado = 'true';
-
-    CATALOGO.forEach((p) => { p.img = resolverImagen(p); });
-
-    $$('img[data-fallback-emoji]').forEach((img) => {
-      img.addEventListener('error', () => manejarErrorImagen(img, img.dataset.fallbackEmoji));
-    });
-
-    $('#vetStatServicios').textContent = String(CATALOGO.length);
-    $('#citaFecha').min = new Date().toISOString().slice(0, 10);
-    const alias = aliasActual();
-    if (alias !== 'Invitado') {
-      $('#vetAliasInput').value = alias;
-      $('#vetClientAlias').value = alias;
-      $('#vetOwner').value = alias;
-      $('#citaTutor').value = alias;
-    }
-    actualizarAliasUI();
-
-    document.body.classList.toggle('is-admin', esAdmin());
-    aplicarAdminUI();
-    renderCatalogo();
-    renderCarrito();
-    syncCatalogoFromJson();
-
-    if (!leerLog(KEYS.eventos).length) {
-      logEvento(`Sistema hidratado con ${CATALOGO.length} servicios cargados.`, 'ok');
-    } else {
-      escribirConsolaViva('OK', `Interfaz hidratada (${CATALOGO.length} servicios activos).`);
-    }
-
-    actualizarEstadoRed();
-    window.addEventListener('online', actualizarEstadoRed);
-    window.addEventListener('offline', actualizarEstadoRed);
-    configurarInstalacionPWA();
-
-    enlazarEventos();
-    observadorSecciones();
-    App.registerSW('sw.js');
-    mostrarToastUI('🐾 Catálogo Don Gato hidratado y listo.', 'ok');
-  }
-
-  App.ready(() => {
-    if (!CATALOGO.length) {
-      mostrarToastUI('No se pudo cargar el catálogo veterinario.', 'warn');
-      return;
-    }
-    hidratarInterfaz();
+    abrirModalSeguro('#vetResumenModal');
+    registrarBitacora('Resumen de cotización abierto', `${datos.mascota} — ${total} BOB`);
   });
-})();
+
+  $('#vetResumenConfirmar').on('click', () => {
+    const carrito = obtenerCarrito();
+    const datos = validarDatosPaciente();
+    if (!carrito.length || !datos) return;
+
+    const total = carrito.reduce((acc, it) => acc + it.precio * it.cantidad, 0);
+    const items = carrito.reduce((acc, it) => acc + it.cantidad, 0);
+    const ventas = leerJSON(STORAGE.ventas, []);
+    ventas.unshift({
+      fecha: new Date().toLocaleString('es-BO'),
+      tutor: datos.tutor,
+      mascota: datos.mascota,
+      total,
+      items
+    });
+    guardarJSON(STORAGE.ventas, ventas);
+    renderBitacoraAdmin();
+
+    if (window.SupabaseDW2 && typeof window.SupabaseDW2.guardarCotizacion === 'function') {
+      window.SupabaseDW2.guardarCotizacion({ ...datos, carrito, total }).catch(() => {});
+    }
+
+    clearInterval(timerResumen);
+    cerrarModalSeguro('#vetResumenModal');
+    mostrarToast(`✅ Reserva confirmada para ${datos.mascota} (${total} BOB)`);
+    registrarBitacora('Cotización confirmada', `${datos.tutor} — ${total} BOB`);
+  });
+
+  $('#vetWhatsapp, #vetResumenWa').on('click', () => {
+    const carrito = obtenerCarrito();
+    if (!carrito.length) {
+      $('#vetPatientError').text('Añade servicios al cotizador antes de enviar por WhatsApp.');
+      return;
+    }
+    const datos = validarDatosPaciente();
+    if (!datos) return;
+    abrirWhatsapp(WHATSAPP_NUM, construirTextoCotizacion(datos, carrito));
+    registrarBitacora('Cotización enviada por WhatsApp', datos.mascota);
+  });
+
+  /* ==========================================================================
+     9. FORMULARIO DE CITAS + SUPABASE + WHATSAPP
+     ========================================================================== */
+  const hoyISO = new Date().toISOString().split('T')[0];
+  $('#citaFecha').attr('min', hoyISO).val(hoyISO);
+
+  $('#vetCitaForm').on('submit', async function (e) {
+    e.preventDefault();
+    const tutor = limpiar($('#citaTutor').val());
+    const mascota = limpiar($('#citaMascota').val());
+    const celular = limpiar($('#citaCelular').val());
+    const fecha = $('#citaFecha').val();
+    const servicio = $('#citaServicio').val();
+    const notas = limpiar($('#citaNotas').val());
+    const $err = $('#vetCitaError').text('');
+    const $box = $('#alertaCitaBox').empty();
+
+    if (!esSoloLetras(tutor)) {
+      $err.text('Ingresa un nombre válido para el tutor (solo letras).');
+      return;
+    }
+    if (!mascota) {
+      $err.text('Ingresa el nombre de la mascota.');
+      return;
+    }
+    if (!esTelefonoValido(celular)) {
+      $err.text('El celular debe tener 8 dígitos y empezar con 6 o 7.');
+      return;
+    }
+    if (!fecha || fecha < hoyISO) {
+      $err.text('Selecciona una fecha válida (hoy o posterior).');
+      return;
+    }
+
+    const payload = {
+      tutor,
+      mascota,
+      celular,
+      fecha,
+      servicio,
+      notas,
+      origen: 'DonGato-Web'
+    };
+
+    if (window.SupabaseDW2 && typeof window.SupabaseDW2.guardarCita === 'function') {
+      await window.SupabaseDW2.guardarCita(payload).catch(() => {});
+    }
+
+    $box.html('<span class="msg-exito">✅ Cita registrada correctamente. Abriendo WhatsApp para confirmar horario...</span>');
+    mostrarToast(`📅 Cita registrada para ${mascota}`);
+    registrarBitacora('Cita agendada', `${tutor} · ${mascota} · ${servicio} (${fecha})`);
+
+    const msg = `🐾 *Solicitud de Cita — Clínica Don Gato*\nTutor: ${tutor}\nMascota: ${mascota}\nCelular: ${celular}\nFecha: ${fecha}\nServicio: ${servicio}${notas ? `\nNotas: ${notas}` : ''}`;
+    abrirWhatsapp(WHATSAPP_NUM, msg);
+  });
+
+  /* ==========================================================================
+     10. PANEL DE ADMINISTRACIÓN Y BITÁCORA PERSISTENTE
+     ========================================================================== */
+  const actualizarModoAdmin = () => {
+    const esAdmin = localStorage.getItem(STORAGE.admin) === '1';
+    document.body.classList.toggle('is-admin', esAdmin);
+    $('#vetAdminForm').toggleClass('hidden', esAdmin);
+    $('#vetAdminLogout').toggleClass('hidden', !esAdmin);
+    renderBitacoraAdmin();
+  };
+
+  const renderBitacoraAdmin = () => {
+    const eventos = leerJSON(STORAGE.eventos, []);
+    const ventas = leerJSON(STORAGE.ventas, []);
+    const totalVentas = ventas.reduce((acc, v) => acc + Number(v.total || 0), 0);
+    const totalItems = ventas.reduce((acc, v) => acc + Number(v.items || 0), 0);
+    const ticket = ventas.length ? Math.round(totalVentas / ventas.length) : 0;
+
+    $('#kpiVentas').text(`${totalVentas} BOB`);
+    $('#kpiEventos').text(eventos.length);
+    $('#kpiItems').text(totalItems);
+    $('#kpiTicket').text(`${ticket} BOB`);
+
+    const $logEv = $('#vetLogEventos').empty();
+    if (!eventos.length) {
+      $logEv.append('<p class="muted small">Sin eventos registrados aún.</p>');
+    } else {
+      eventos.slice(0, 30).forEach((ev) => {
+        $logEv.append(`<div class="small mb-1"><strong>[${escapeHTML(ev.fecha)}]</strong> ${escapeHTML(ev.accion)} ${ev.detalle ? `— ${escapeHTML(ev.detalle)}` : ''}</div>`);
+      });
+    }
+
+    const $logVe = $('#vetLogVentas').empty();
+    if (!ventas.length) {
+      $logVe.append('<p class="muted small">Sin cotizaciones confirmadas todavía.</p>');
+    } else {
+      ventas.forEach((v) => {
+        $logVe.append(`<div class="small mb-1"><strong>[${escapeHTML(v.fecha)}]</strong> ${escapeHTML(v.tutor)} (${escapeHTML(v.mascota)}) — <strong>${v.total} BOB</strong></div>`);
+      });
+    }
+  };
+
+  $('#vetAdminForm').on('submit', function (e) {
+    e.preventDefault();
+    const u = limpiar($('#vetAdminUser').val()).toLowerCase();
+    const p = limpiar($('#vetAdminPass').val());
+    if ((u === 'admin' && p === 'admin123') || p === 'vet2026') {
+      localStorage.setItem(STORAGE.admin, '1');
+      $('#vetAdminError').text('');
+      actualizarModoAdmin();
+      cerrarModalSeguro('#vetCuentaModal');
+      mostrarToast('🔐 Sesión de administrador iniciada');
+      registrarBitacora('Inicio de sesión Admin');
+    } else {
+      $('#vetAdminError').text('Credenciales incorrectas. Usa admin / admin123.');
+    }
+  });
+
+  $('#vetAdminLogout').on('click', () => {
+    localStorage.removeItem(STORAGE.admin);
+    actualizarModoAdmin();
+    cerrarModalSeguro('#vetCuentaModal');
+    mostrarToast('🚪 Sesión de administrador cerrada', 'warn');
+    registrarBitacora('Cierre de sesión Admin');
+  });
+
+  $('#btnLimpiarLiveLog').on('click', () => {
+    $('#logOutput').html('<div>[Sistema] Consola limpiada.</div>');
+  });
+
+  $('#vetRefreshLogs').on('click', renderBitacoraAdmin);
+
+  $('#vetClearLogs').on('click', () => {
+    guardarJSON(STORAGE.eventos, []);
+    guardarJSON(STORAGE.ventas, []);
+    renderBitacoraAdmin();
+    mostrarToast('🗑️ Historial administrativo limpiado', 'warn');
+  });
+
+  /* ==========================================================================
+     11. INICIALIZACIÓN GLOBAL (CON CARGA AUTOMÁTICA DE JSON / RESPALDO)
+     ========================================================================== */
+  const iniciarApp = async () => {
+    if (!CATALOGO.length) {
+      try {
+        const resp = await fetch('data/servicios.json');
+        if (resp.ok) {
+          const json = await resp.json();
+          const lista = Array.isArray(json) ? json : (json.servicios || json.catalogo || []);
+          if (lista.length) CATALOGO = lista;
+        }
+      } catch {}
+    }
+
+    if (!CATALOGO.length) {
+      CATALOGO = CATALOGO_RESPALDO;
+    }
+
+    aplicarRespaldoImagenes(document);
+    renderChipsCategorias();
+    actualizarSelectCascada('todos');
+    filtrarCatalogo();
+    renderCarrito();
+    actualizarModoAdmin();
+  };
+
+  iniciarApp();
+});

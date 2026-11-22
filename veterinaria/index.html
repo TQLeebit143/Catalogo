@@ -2,7 +2,7 @@
 <html lang="es" data-default-theme="dark" data-theme="dark" data-theme-key="dw2-theme" data-device-router="off">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="description" content="Clínica Veterinaria & SPA Don Gato — Dr. Jorge Castillo MVZ. Miraflores, La Paz, Bolivia.">
   <meta name="theme-color" content="#6b2d6b">
   <title>🐾 Clínica Veterinaria &amp; SPA Don Gato</title>
@@ -19,7 +19,7 @@
 
   <header class="vet-nav">
     <div class="vet-nav-inner">
-      <a href="#inicio" class="vet-brand" aria-label="Don Gato, ir al inicio">
+      <a href="#inicio" class="vet-brand" data-vista-target="inicio" aria-label="Don Gato, ir al inicio">
         <span class="vet-brand-logo">
           <img src="Img/LOGO DE DON GATO sin fondo.png" alt="Logo Don Gato" width="1080" height="1080" data-fallback-emoji="🐱">
         </span>
@@ -30,25 +30,28 @@
       </a>
 
       <nav class="vet-links" aria-label="Navegación principal">
-        <a href="#inicio" class="active">Inicio</a>
-        <a href="#catalogo">Catálogo</a>
-        <a href="#cotizador">Cotizador</a>
-        <a href="#citas">Citas</a>
-        <a href="#auditoria">Bitácora</a>
+        <a href="#inicio" class="active" data-vista-target="inicio">Inicio</a>
+        <a href="#catalogo" data-vista-target="catalogo">Catálogo</a>
+        <a href="#cotizador" data-vista-target="cotizador">Cotizador</a>
+        <a href="#citas" data-vista-target="citas">Citas</a>
+        <a href="#auditoria" data-vista-target="auditoria">Bitácora</a>
       </nav>
 
       <div class="vet-nav-actions">
         <span id="estadoRed" class="vet-net-pill" aria-live="polite">En Línea</span>
         <span class="vet-alias-pill" title="Tu alias de tutor">🐾 <span id="vetAliasDisplay">Invitado</span></span>
-        <a href="#cotizador" class="vet-cart-pill" aria-label="Ir al cotizador">
+        <a href="#cotizador" class="vet-cart-pill" data-vista-target="cotizador" aria-label="Ir al cotizador">
           🛒 <strong id="vetCartCount">0</strong> · <strong id="vetCartTotal">0</strong> BOB
         </a>
         <button type="button" id="btnInstalarPWA" class="btn btn-accent btn-sm" hidden>📲 Instalar</button>
+        <button type="button" id="btnSimularVista" class="btn btn-ghost btn-sm vet-view-toggle" aria-pressed="false" title="Alternar vista Móvil / Laptop">
+          <span class="view-icon">📱</span><span class="view-label">Móvil</span>
+        </button>
         <button type="button" id="themeBtn" class="btn btn-icon btn-ghost" data-theme-toggle aria-label="Cambiar tema">
           <span class="theme-icon">☀️</span>
         </button>
         <button type="button" class="btn btn-primary btn-sm" data-open-modal="vetCuentaModal">
-          👤 Mi cuenta
+          👤 <span class="btn-cuenta-txt">Mi cuenta</span>
         </button>
         <button type="button" id="burguerBtn" class="vet-burger" aria-controls="vetMobileNav" aria-expanded="false" aria-label="Abrir menú">
           ☰
@@ -57,249 +60,269 @@
     </div>
 
     <nav id="vetMobileNav" class="vet-mobile-nav" aria-label="Menú móvil">
-      <a href="#inicio">🏠 Inicio</a>
-      <a href="#catalogo">📋 Catálogo</a>
-      <a href="#cotizador">🛒 Cotizador</a>
-      <a href="#citas">📅 Citas / Contacto</a>
-      <a href="#auditoria">📜 Bitácora en Vivo</a>
+      <a href="#inicio" data-vista-target="inicio">🏠 Inicio</a>
+      <a href="#catalogo" data-vista-target="catalogo">📋 Catálogo</a>
+      <a href="#cotizador" data-vista-target="cotizador">🛒 Cotizador</a>
+      <a href="#citas" data-vista-target="citas">📅 Citas / Contacto</a>
+      <a href="#auditoria" data-vista-target="auditoria">📜 Bitácora en Vivo</a>
     </nav>
   </header>
 
-  <main class="vet-main">
+  <div class="vet-app-shell">
+    <nav class="vet-dock" aria-label="Navegación rápida móvil">
+      <a href="#inicio" class="vet-dock-link is-active" data-vista-target="inicio">
+        <span>🏠</span><small>Inicio</small>
+      </a>
+      <a href="#catalogo" class="vet-dock-link" data-vista-target="catalogo">
+        <span>📋</span><small>Catálogo</small>
+      </a>
+      <a href="#cotizador" class="vet-dock-link" data-vista-target="cotizador">
+        <span>🛒</span><small>Cotizar</small>
+      </a>
+      <a href="#citas" class="vet-dock-link" data-vista-target="citas">
+        <span>📅</span><small>Citas</small>
+      </a>
+      <a href="#auditoria" class="vet-dock-link" data-vista-target="auditoria">
+        <span>📜</span><small>Bitácora</small>
+      </a>
+    </nav>
 
-    <section id="inicio" class="vet-hero">
-      <div class="vet-hero-glow" aria-hidden="true"></div>
-      <div class="vet-hero-inner">
-        <div class="vet-hero-logo">
-          <img src="Img/LOGO DE DON GATO sin fondo.png" alt="Don Gato" width="1080" height="1080" data-fallback-emoji="🐱">
-        </div>
-        <div class="vet-hero-copy">
-          <span class="vet-badge">🐾 Dr. Jorge Castillo · Médico Veterinario Zootecnista (MVZ)</span>
-          <h1>Clínica Veterinaria &amp; SPA <span>Don Gato</span></h1>
-          <p class="vet-hero-address">📍 Miraflores, Av. Pasoskanqui esq. Brasil #1627 · La Paz, Bolivia</p>
-          <p class="vet-hero-desc">Atención médica profesional, cirugías seguras, peluquería &amp; SPA relajante, petshop y farmacia integral, con amor y vocación por tu mascota.</p>
+    <main class="vet-main">
 
-          <form id="vetAliasForm" class="vet-alias-form" autocomplete="off">
-            <label for="vetAliasInput">Tu nombre o alias de tutor</label>
-            <div class="vet-alias-row">
-              <input id="vetAliasInput" class="input" type="text" maxlength="40" placeholder="Ej: Andrea y Michi">
-              <button class="btn btn-primary" type="submit">Guardar</button>
+      <section id="inicio" class="vet-hero vista-seccion is-vista-activa" data-seccion="inicio">
+        <div class="vet-hero-glow" aria-hidden="true"></div>
+        <div class="vet-hero-inner">
+          <div class="vet-hero-logo">
+            <img src="Img/LOGO DE DON GATO sin fondo.png" alt="Don Gato" width="1080" height="1080" data-fallback-emoji="🐱">
+          </div>
+          <div class="vet-hero-copy">
+            <span class="vet-badge">🐾 Dr. Jorge Castillo · Médico Veterinario Zootecnista (MVZ)</span>
+            <h1>Clínica Veterinaria &amp; SPA <span>Don Gato</span></h1>
+            <p class="vet-hero-address">📍 Miraflores, Av. Pasoskanqui esq. Brasil #1627 · La Paz, Bolivia</p>
+            <p class="vet-hero-desc">Atención médica profesional, cirugías seguras, peluquería &amp; SPA relajante, petshop y farmacia integral, con amor y vocación por tu mascota.</p>
+
+            <form id="vetAliasForm" class="vet-alias-form" autocomplete="off">
+              <label for="vetAliasInput">Tu nombre o alias de tutor</label>
+              <div class="vet-alias-row">
+                <input id="vetAliasInput" class="input" type="text" maxlength="40" placeholder="Ej: Andrea y Michi">
+                <button class="btn btn-primary" type="submit">Guardar</button>
+              </div>
+            </form>
+
+            <div class="vet-hero-actions">
+              <a href="#catalogo" class="btn btn-accent" data-vista-target="catalogo">📋 Explorar catálogo</a>
+              <a href="#cotizador" class="btn btn-ghost" data-vista-target="cotizador">🛒 Cotizador rápido</a>
             </div>
-          </form>
-
-          <div class="vet-hero-actions">
-            <a href="#catalogo" class="btn btn-accent">📋 Explorar catálogo</a>
-            <a href="#cotizador" class="btn btn-ghost">🛒 Cotizador rápido</a>
-          </div>
-        </div>
-      </div>
-
-      <div class="vet-stats">
-        <div class="vet-stat"><strong id="vetStatServicios">23</strong><span>servicios y productos</span></div>
-        <div class="vet-stat"><strong>5</strong><span>áreas de atención</span></div>
-        <div class="vet-stat"><strong>MVZ</strong><span>Dr. Jorge Castillo</span></div>
-        <div class="vet-stat"><strong>BOB</strong><span>precios oficiales</span></div>
-      </div>
-    </section>
-
-    <section id="catalogo" class="vet-section">
-      <div class="vet-section-head">
-        <span class="vet-kicker">Catálogo oficial</span>
-        <h2>Servicios veterinarios &amp; productos</h2>
-        <p>Precios en bolivianos (BOB). Filtra por área, despliega especificaciones o añade directamente al cotizador.</p>
-      </div>
-
-      <div class="vet-filters card">
-        <div class="vet-filter-bar">
-          <div class="field">
-            <label class="sr-only" for="vetBusqueda">Buscar en el catálogo</label>
-            <input id="vetBusqueda" class="input" type="search" placeholder="🔍 Buscar por servicio, medicina o producto…" autocomplete="off">
-          </div>
-          <div class="field">
-            <label class="sr-only" for="vetCascadeArea">Área veterinaria</label>
-            <select id="vetCascadeArea" class="select">
-              <option value="todos">Todas las áreas (Cascada)</option>
-              <option value="peluqueria">✂️ Peluquería &amp; SPA</option>
-              <option value="veterinaria">🩺 Medicina Veterinaria</option>
-              <option value="cirugias">🏥 Cirugías</option>
-              <option value="petshop">🛍️ Petshop</option>
-              <option value="farmacia">💊 Farmacia</option>
-            </select>
-          </div>
-          <div class="field">
-            <label class="sr-only" for="vetCascadeSub">Filtro por rango de precio</label>
-            <select id="vetCascadeSub" class="select" disabled>
-              <option value="todos">-- Primero elige un área --</option>
-            </select>
           </div>
         </div>
-        <div id="vetFiltros" class="chips" role="group" aria-label="Filtrar por categoría"></div>
-        <p id="vetResultInfo" class="vet-result-info" aria-live="polite"></p>
-      </div>
 
-      <div id="vetGrid" class="vet-grid" aria-live="polite"></div>
-    </section>
+        <div class="vet-stats">
+          <div class="vet-stat"><strong id="vetStatServicios">23</strong><span>servicios y productos</span></div>
+          <div class="vet-stat"><strong>5</strong><span>áreas de atención</span></div>
+          <div class="vet-stat"><strong>MVZ</strong><span>Dr. Jorge Castillo</span></div>
+          <div class="vet-stat"><strong>BOB</strong><span>precios oficiales</span></div>
+        </div>
+      </section>
 
-    <section id="cotizador" class="vet-section vet-section-alt">
-      <div class="vet-section-head">
-        <span class="vet-kicker">Calculadora interactiva</span>
-        <h2>Cotizador en línea</h2>
-        <p>Calcula tus servicios o estadías, completa los datos del paciente y genera un resumen confirmado.</p>
-      </div>
+      <section id="catalogo" class="vet-section vista-seccion" data-seccion="catalogo">
+        <div class="vet-section-head">
+          <span class="vet-kicker">Catálogo oficial</span>
+          <h2>Servicios veterinarios &amp; productos</h2>
+          <p>Precios en bolivianos (BOB). Filtra por área, despliega especificaciones o añade directamente al cotizador.</p>
+        </div>
 
-      <div class="vet-quote-layout">
-        <div class="card card-pad">
-          <h3 class="card-title">Datos del paciente &amp; Cálculo rápido</h3>
-          <p class="card-sub">Calcula una consulta base o completa los datos para tu cotización personalizada.</p>
-
-          <div class="vet-calc-rapido">
+        <div class="vet-filters card">
+          <div class="vet-filter-bar">
             <div class="field">
-              <label for="vetCalcSesiones">Sesiones / Consultas base (30 BOB c/u)</label>
-              <input id="vetCalcSesiones" class="input" type="number" min="1" max="20" value="1">
-            </div>
-            <div class="vet-calc-badge">
-              <span>Cálculo base:</span>
-              <strong id="vetCalcTotalRapido">30 BOB</strong>
-            </div>
-          </div>
-
-          <div class="vet-patient-grid">
-            <div class="field">
-              <label for="vetPet">Nombre de la mascota</label>
-              <input id="vetPet" class="input" type="text" maxlength="40" placeholder="Ej: Bigotes">
+              <label class="sr-only" for="vetBusqueda">Buscar en el catálogo</label>
+              <input id="vetBusqueda" class="input" type="search" placeholder="🔍 Buscar por servicio, medicina o producto…" autocomplete="off">
             </div>
             <div class="field">
-              <label for="vetSpecies">Especie</label>
-              <select id="vetSpecies" class="select">
-                <option value="Gato">🐱 Gato</option>
-                <option value="Perro">🐶 Perro</option>
-                <option value="Otro">🐾 Otro</option>
+              <label class="sr-only" for="vetCascadeArea">Área veterinaria</label>
+              <select id="vetCascadeArea" class="select">
+                <option value="todos">Todas las áreas (Cascada)</option>
+                <option value="peluqueria">✂️ Peluquería &amp; SPA</option>
+                <option value="veterinaria">🩺 Medicina Veterinaria</option>
+                <option value="cirugias">🏥 Cirugías</option>
+                <option value="petshop">🛍️ Petshop</option>
+                <option value="farmacia">💊 Farmacia</option>
               </select>
             </div>
             <div class="field">
-              <label for="vetOwner">Tutor / dueño</label>
-              <input id="vetOwner" class="input" type="text" maxlength="60" placeholder="Nombre completo">
+              <label class="sr-only" for="vetCascadeSub">Filtro por rango de precio</label>
+              <select id="vetCascadeSub" class="select" disabled>
+                <option value="todos">-- Primero elige un área --</option>
+              </select>
+            </div>
+          </div>
+          <div id="vetFiltros" class="chips" role="group" aria-label="Filtrar por categoría"></div>
+          <p id="vetResultInfo" class="vet-result-info" aria-live="polite"></p>
+        </div>
+
+        <div id="vetGrid" class="vet-grid" aria-live="polite"></div>
+      </section>
+
+      <section id="cotizador" class="vet-section vet-section-alt vista-seccion" data-seccion="cotizador">
+        <div class="vet-section-head">
+          <span class="vet-kicker">Calculadora interactiva</span>
+          <h2>Cotizador en línea</h2>
+          <p>Calcula tus servicios o estadías, completa los datos del paciente y genera un resumen confirmado.</p>
+        </div>
+
+        <div class="vet-quote-layout">
+          <div class="card card-pad">
+            <h3 class="card-title">Datos del paciente &amp; Cálculo rápido</h3>
+            <p class="card-sub">Calcula una consulta base o completa los datos para tu cotización personalizada.</p>
+
+            <div class="vet-calc-rapido">
+              <div class="field">
+                <label for="vetCalcSesiones">Sesiones / Consultas base (30 BOB c/u)</label>
+                <input id="vetCalcSesiones" class="input" type="number" min="1" max="20" value="1">
+              </div>
+              <div class="vet-calc-badge">
+                <span>Cálculo base:</span>
+                <strong id="vetCalcTotalRapido">30 BOB</strong>
+              </div>
+            </div>
+
+            <div class="vet-patient-grid">
+              <div class="field">
+                <label for="vetPet">Nombre de la mascota</label>
+                <input id="vetPet" class="input" type="text" maxlength="40" placeholder="Ej: Bigotes">
+              </div>
+              <div class="field">
+                <label for="vetSpecies">Especie</label>
+                <select id="vetSpecies" class="select">
+                  <option value="Gato">🐱 Gato</option>
+                  <option value="Perro">🐶 Perro</option>
+                  <option value="Otro">🐾 Otro</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="vetOwner">Tutor / dueño</label>
+                <input id="vetOwner" class="input" type="text" maxlength="60" placeholder="Nombre completo">
+              </div>
+              <div class="field">
+                <label for="vetPhone">Celular / WhatsApp</label>
+                <input id="vetPhone" class="input" type="tel" maxlength="15" placeholder="Ej: 67301341">
+              </div>
+            </div>
+            <p id="vetPatientError" class="form-error" role="alert"></p>
+          </div>
+
+          <div class="card card-pad">
+            <div class="row-between">
+              <h3 class="card-title">Servicios seleccionados</h3>
+              <button id="vetCartClear" type="button" class="btn btn-danger btn-sm">🗑️ Vaciar</button>
+            </div>
+            <ul id="vetCartList" class="vet-cart-list"></ul>
+
+            <div class="vet-total-row">
+              <span>Total estimado</span>
+              <strong id="vetCartSubtotal">0 BOB</strong>
+            </div>
+
+            <div class="vet-quote-actions">
+              <button id="vetConfirm" type="button" class="btn btn-primary">📋 Generar resumen</button>
+              <button id="vetWhatsapp" type="button" class="btn btn-wa">💬 Enviar por WhatsApp</button>
+            </div>
+            <p class="small muted mt-1">Los precios son referenciales y pueden variar según el tamaño y la condición del paciente.</p>
+          </div>
+        </div>
+      </section>
+
+      <section id="citas" class="vet-section vista-seccion" data-seccion="citas">
+        <div class="vet-section-head">
+          <span class="vet-kicker">Atención personalizada</span>
+          <h2>Agendar cita o consulta médica</h2>
+          <p>Envía tu solicitud (se guarda en Supabase o en cola offline automáticamente) y confirma por WhatsApp.</p>
+        </div>
+
+        <form id="vetCitaForm" class="card card-pad vet-cita-form" novalidate>
+          <div class="vet-patient-grid">
+            <div class="field">
+              <label for="citaTutor">Tutor *</label>
+              <input id="citaTutor" class="input" type="text" maxlength="60" placeholder="Ej: Andrea Gómez" required>
             </div>
             <div class="field">
-              <label for="vetPhone">Celular / WhatsApp</label>
-              <input id="vetPhone" class="input" type="tel" maxlength="15" placeholder="Ej: 67301341">
+              <label for="citaMascota">Mascota *</label>
+              <input id="citaMascota" class="input" type="text" maxlength="40" placeholder="Ej: Michi" required>
+            </div>
+            <div class="field">
+              <label for="citaCelular">Celular (8 dígitos) *</label>
+              <input id="citaCelular" class="input" type="tel" inputmode="numeric" maxlength="8" placeholder="67301341" required>
+            </div>
+            <div class="field">
+              <label for="citaFecha">Fecha preferida *</label>
+              <input id="citaFecha" class="input" type="date" required>
+            </div>
+            <div class="field full">
+              <label for="citaServicio">Servicio de interés</label>
+              <select id="citaServicio" class="select">
+                <option value="Consulta General">🩺 Consulta general (30 BOB)</option>
+                <option value="Peluquería & SPA">✂️ Peluquería &amp; SPA (80 BOB)</option>
+                <option value="Cirugía / Esterilización">🏥 Cirugía / Esterilización</option>
+                <option value="Ecografía">🔬 Ecografía (60 BOB)</option>
+                <option value="Limpieza Dental">🦷 Limpieza dental con sedación (180 BOB)</option>
+                <option value="Vacunación / Desparasitación">💉 Vacunación / Desparasitación</option>
+              </select>
+            </div>
+            <div class="field full">
+              <label for="citaNotas">Notas adicionales</label>
+              <textarea id="citaNotas" class="textarea" maxlength="300" placeholder="Cuéntanos brevemente qué necesita tu mascota…"></textarea>
             </div>
           </div>
-          <p id="vetPatientError" class="form-error" role="alert"></p>
+          <div id="alertaCitaBox" class="vet-alerta-box" aria-live="polite"></div>
+          <p id="vetCitaError" class="form-error" role="alert"></p>
+          <button type="submit" class="btn btn-primary btn-block mt-1">📅 Registrar cita y abrir WhatsApp</button>
+        </form>
+      </section>
+
+      <section id="auditoria" class="vet-section vet-section-alt vista-seccion" data-seccion="auditoria">
+        <div class="vet-section-head">
+          <span class="vet-kicker">Auditoría DOM en tiempo real</span>
+          <h2>Bitácora de eventos del catálogo</h2>
+          <p>Registro cronológico en vivo de filtros, consultas, añadidos al cotizador y reservas mediante delegación de eventos.</p>
         </div>
 
-        <div class="card card-pad">
+        <div class="card card-pad vet-live-log-card">
           <div class="row-between">
-            <h3 class="card-title">Servicios seleccionados</h3>
-            <button id="vetCartClear" type="button" class="btn btn-danger btn-sm">🗑️ Vaciar</button>
+            <h3 class="card-title">⚡ Consola de interacciones</h3>
+            <button type="button" id="btnLimpiarLiveLog" class="btn btn-ghost btn-xs">Limpiar consola</button>
           </div>
-          <ul id="vetCartList" class="vet-cart-list"></ul>
-
-          <div class="vet-total-row">
-            <span>Total estimado</span>
-            <strong id="vetCartSubtotal">0 BOB</strong>
-          </div>
-
-          <div class="vet-quote-actions">
-            <button id="vetConfirm" type="button" class="btn btn-primary">📋 Generar resumen</button>
-            <button id="vetWhatsapp" type="button" class="btn btn-wa">💬 Enviar por WhatsApp</button>
-          </div>
-          <p class="small muted mt-1">Los precios son referenciales y pueden variar según el tamaño y la condición del paciente.</p>
-        </div>
-      </div>
-    </section>
-
-    <section id="citas" class="vet-section">
-      <div class="vet-section-head">
-        <span class="vet-kicker">Atención personalizada</span>
-        <h2>Agendar cita o consulta médica</h2>
-        <p>Envía tu solicitud (se guarda en Supabase o en cola offline automáticamente) y confirma por WhatsApp.</p>
-      </div>
-
-      <form id="vetCitaForm" class="card card-pad vet-cita-form" novalidate>
-        <div class="vet-patient-grid">
-          <div class="field">
-            <label for="citaTutor">Tutor *</label>
-            <input id="citaTutor" class="input" type="text" maxlength="60" placeholder="Ej: Andrea Gómez" required>
-          </div>
-          <div class="field">
-            <label for="citaMascota">Mascota *</label>
-            <input id="citaMascota" class="input" type="text" maxlength="40" placeholder="Ej: Michi" required>
-          </div>
-          <div class="field">
-            <label for="citaCelular">Celular (8 dígitos) *</label>
-            <input id="citaCelular" class="input" type="tel" inputmode="numeric" maxlength="8" placeholder="67301341" required>
-          </div>
-          <div class="field">
-            <label for="citaFecha">Fecha preferida *</label>
-            <input id="citaFecha" class="input" type="date" required>
-          </div>
-          <div class="field full">
-            <label for="citaServicio">Servicio de interés</label>
-            <select id="citaServicio" class="select">
-              <option value="Consulta General">🩺 Consulta general (30 BOB)</option>
-              <option value="Peluquería & SPA">✂️ Peluquería &amp; SPA (80 BOB)</option>
-              <option value="Cirugía / Esterilización">🏥 Cirugía / Esterilización</option>
-              <option value="Ecografía">🔬 Ecografía (60 BOB)</option>
-              <option value="Limpieza Dental">🦷 Limpieza dental con sedación (180 BOB)</option>
-              <option value="Vacunación / Desparasitación">💉 Vacunación / Desparasitación</option>
-            </select>
-          </div>
-          <div class="field full">
-            <label for="citaNotas">Notas adicionales</label>
-            <textarea id="citaNotas" class="textarea" maxlength="300" placeholder="Cuéntanos brevemente qué necesita tu mascota…"></textarea>
+          <div id="logOutput" class="vet-log-stream" aria-live="polite">
+            <div>[Sistema] Bitácora en vivo lista. Escuchando interacciones del usuario...</div>
           </div>
         </div>
-        <div id="alertaCitaBox" class="vet-alerta-box" aria-live="polite"></div>
-        <p id="vetCitaError" class="form-error" role="alert"></p>
-        <button type="submit" class="btn btn-primary btn-block mt-1">📅 Registrar cita y abrir WhatsApp</button>
-      </form>
-    </section>
 
-    <section id="auditoria" class="vet-section vet-section-alt">
-      <div class="vet-section-head">
-        <span class="vet-kicker">Auditoría DOM en tiempo real</span>
-        <h2>Bitácora de eventos del catálogo</h2>
-        <p>Registro cronológico en vivo de filtros, consultas, añadidos al cotizador y reservas mediante delegación de eventos.</p>
-      </div>
+        <div class="admin-only mt-1">
+          <div class="vet-kpis kpi-grid">
+            <div class="kpi"><span class="kpi-label">Ventas acumuladas</span><strong class="kpi-value" id="kpiVentas">0 BOB</strong><span class="kpi-hint">cotizaciones confirmadas</span></div>
+            <div class="kpi"><span class="kpi-label">Eventos</span><strong class="kpi-value" id="kpiEventos">0</strong><span class="kpi-hint">acciones registradas</span></div>
+            <div class="kpi"><span class="kpi-label">Ítems vendidos</span><strong class="kpi-value" id="kpiItems">0</strong><span class="kpi-hint">unidades cotizadas</span></div>
+            <div class="kpi"><span class="kpi-label">Ticket promedio</span><strong class="kpi-value" id="kpiTicket">0 BOB</strong><span class="kpi-hint">por cotización</span></div>
+          </div>
 
-      <div class="card card-pad vet-live-log-card">
-        <div class="row-between">
-          <h3 class="card-title">⚡ Consola de interacciones</h3>
-          <button type="button" id="btnLimpiarLiveLog" class="btn btn-ghost btn-xs">Limpiar consola</button>
-        </div>
-        <div id="logOutput" class="vet-log-stream" aria-live="polite">
-          <div>[Sistema] Bitácora en vivo lista. Escuchando interacciones del usuario...</div>
-        </div>
-      </div>
-
-      <div class="admin-only mt-1">
-        <div class="vet-kpis kpi-grid">
-          <div class="kpi"><span class="kpi-label">Ventas acumuladas</span><strong class="kpi-value" id="kpiVentas">0 BOB</strong><span class="kpi-hint">cotizaciones confirmadas</span></div>
-          <div class="kpi"><span class="kpi-label">Eventos</span><strong class="kpi-value" id="kpiEventos">0</strong><span class="kpi-hint">acciones registradas</span></div>
-          <div class="kpi"><span class="kpi-label">Ítems vendidos</span><strong class="kpi-value" id="kpiItems">0</strong><span class="kpi-hint">unidades cotizadas</span></div>
-          <div class="kpi"><span class="kpi-label">Ticket promedio</span><strong class="kpi-value" id="kpiTicket">0 BOB</strong><span class="kpi-hint">por cotización</span></div>
-        </div>
-
-        <div class="vet-admin-layout">
-          <div class="card card-pad">
-            <div class="row-between">
-              <h3 class="card-title">📋 Historial persistente</h3>
-              <button type="button" class="btn btn-ghost btn-xs" id="vetRefreshLogs">↻ Actualizar</button>
+          <div class="vet-admin-layout">
+            <div class="card card-pad">
+              <div class="row-between">
+                <h3 class="card-title">📋 Historial persistente</h3>
+                <button type="button" class="btn btn-ghost btn-xs" id="vetRefreshLogs">↻ Actualizar</button>
+              </div>
+              <div id="vetLogEventos" class="log-box" aria-live="polite"></div>
             </div>
-            <div id="vetLogEventos" class="log-box" aria-live="polite"></div>
-          </div>
-          <div class="card card-pad">
-            <div class="row-between">
-              <h3 class="card-title">💰 Cotizaciones y ventas</h3>
-              <button type="button" class="btn btn-danger btn-xs" id="vetClearLogs">🗑️ Limpiar</button>
+            <div class="card card-pad">
+              <div class="row-between">
+                <h3 class="card-title">💰 Cotizaciones y ventas</h3>
+                <button type="button" class="btn btn-danger btn-xs" id="vetClearLogs">🗑️ Limpiar</button>
+              </div>
+              <div id="vetLogVentas" class="log-box" aria-live="polite"></div>
             </div>
-            <div id="vetLogVentas" class="log-box" aria-live="polite"></div>
           </div>
         </div>
-      </div>
-    </section>
-  </main>
+      </section>
+    </main>
+  </div>
 
   <footer class="vet-footer">
     <div>
