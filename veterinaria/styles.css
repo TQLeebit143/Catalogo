@@ -45,6 +45,7 @@ body.vet-site {
     radial-gradient(700px 480px at -10% 25%, rgba(192, 132, 252, .12), transparent 60%),
     var(--bg);
   min-height: 100vh;
+  min-height: 100dvh;
 }
 
 html[data-theme="light"] body.vet-site {
@@ -56,6 +57,32 @@ html[data-theme="light"] body.vet-site {
 
 body:not(.is-admin) .admin-only { display: none !important; }
 
+/* ============================================================
+   TOAST ALERT FLOTANTE (jQuery .slideDown / .fadeOut)
+   ============================================================ */
+.vet-toast-alert {
+  display: none;
+  position: fixed;
+  top: 82px;
+  right: 18px;
+  z-index: 1200;
+  max-width: 340px;
+  padding: 13px 16px;
+  border-radius: 12px;
+  background: var(--bg-card);
+  color: var(--text);
+  border: 1px solid var(--accent);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, .45);
+  font-size: .84rem;
+  font-weight: 700;
+  line-height: 1.4;
+}
+.vet-toast-alert.is-ok { border-color: #4ade80; }
+.vet-toast-alert.is-warn { border-color: #fbbf24; }
+
+/* ============================================================
+   NAVEGACIÓN SUPERIOR Y MÓVIL
+   ============================================================ */
 .vet-nav {
   position: sticky;
   top: 0;
@@ -109,9 +136,24 @@ body:not(.is-admin) .admin-only { display: none !important; }
 }
 
 .vet-nav-actions { display: flex; align-items: center; gap: 8px; }
+.vet-net-pill {
+  font-size: .7rem;
+  font-weight: 800;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: rgba(74, 222, 128, .15);
+  color: #4ade80;
+  border: 1px solid rgba(74, 222, 128, .35);
+  white-space: nowrap;
+}
+.vet-net-pill.is-offline {
+  background: rgba(251, 191, 36, .16);
+  color: #fbbf24;
+  border-color: rgba(251, 191, 36, .4);
+}
 .vet-alias-pill {
   font-size: .74rem; font-weight: 800; color: var(--accent);
-  max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .vet-cart-pill {
   display: inline-flex; align-items: center; gap: 4px;
@@ -127,7 +169,7 @@ body:not(.is-admin) .admin-only { display: none !important; }
 .vet-cart-pill:hover { border-color: var(--accent); text-decoration: none; }
 .vet-burger {
   display: none;
-  width: 40px; height: 40px;
+  width: 44px; height: 44px;
   border-radius: 10px;
   border: 1px solid var(--border);
   background: var(--bg-panel);
@@ -141,7 +183,6 @@ body:not(.is-admin) .admin-only { display: none !important; }
   background: var(--bg-card);
   padding: 8px 16px 14px;
 }
-.vet-mobile-nav.open { display: flex; }
 .vet-mobile-nav a {
   color: var(--text);
   font-weight: 700;
@@ -152,6 +193,9 @@ body:not(.is-admin) .admin-only { display: none !important; }
 .vet-mobile-nav a:last-child { border-bottom: 0; }
 .vet-pwa-link { color: #4ade80 !important; }
 
+/* ============================================================
+   HERO Y ESTADÍSTICAS
+   ============================================================ */
 .vet-main { overflow: hidden; }
 .vet-hero {
   position: relative;
@@ -229,7 +273,7 @@ html[data-theme="light"] .vet-hero-desc { color: #5f4479; }
 .vet-alias-form label { display: block; margin-bottom: 6px; font-size: .75rem; font-weight: 800; color: var(--text-sub); }
 html[data-theme="dark"] .vet-alias-form label { color: #d9c8e6; }
 .vet-alias-row { display: flex; gap: 8px; }
-.vet-alias-row .input { flex: 1; }
+.vet-alias-row .input { flex: 1; min-width: 0; }
 .vet-hero-actions { display: flex; flex-wrap: wrap; gap: 10px; }
 html[data-theme="dark"] .vet-hero .btn-ghost { background: rgba(255,255,255,.06); border-color: rgba(255,255,255,.22); color: #fff; }
 
@@ -253,6 +297,9 @@ html[data-theme="light"] .vet-stat { background: rgba(255, 255, 255, .68); borde
 .vet-stat span { display: block; margin-top: 2px; color: var(--text-sub); font-size: .7rem; }
 html[data-theme="dark"] .vet-stat span { color: rgba(255,255,255,.62); }
 
+/* ============================================================
+   SECCIONES Y CATÁLOGO CON FILTROS MULTICAPA + ACORDEÓN
+   ============================================================ */
 .vet-section {
   max-width: 1240px;
   margin: 0 auto;
@@ -277,16 +324,19 @@ html[data-theme="light"] .vet-section-alt { background: linear-gradient(180deg, 
   letter-spacing: 1.4px;
   text-transform: uppercase;
 }
-.vet-kicker-admin { color: #fca5a5; }
 .vet-section-head h2 { font-size: clamp(1.5rem, 3vw, 2.1rem); font-weight: 900; }
 .vet-section-head p { margin-top: 8px; color: var(--text-sub); font-size: .9rem; line-height: 1.55; }
 
 .vet-filters { padding: 16px; margin-bottom: 22px; display: flex; flex-direction: column; gap: 12px; }
-.vet-filters .input { max-width: 560px; }
+.vet-filter-bar {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 1fr);
+  gap: 10px;
+}
 .vet-result-info { color: var(--text-sub); font-size: .76rem; font-weight: 700; }
 .vet-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(232px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(248px, 1fr));
   gap: 18px;
 }
 .vet-card {
@@ -303,7 +353,7 @@ html[data-theme="light"] .vet-section-alt { background: linear-gradient(180deg, 
 .vet-card:hover { transform: translateY(-4px); border-color: var(--accent); box-shadow: 0 18px 42px var(--accent-glow); }
 .vet-card-media {
   position: relative;
-  height: 166px;
+  height: 170px;
   background: var(--bg-panel);
   overflow: hidden;
 }
@@ -312,12 +362,6 @@ html[data-theme="light"] .vet-section-alt { background: linear-gradient(180deg, 
   transition: transform .35s ease;
 }
 .vet-card:hover .vet-card-media img { transform: scale(1.06); }
-.vet-card-emoji {
-  position: absolute; inset: 0;
-  display: none; place-items: center;
-  font-size: 3.4rem;
-  background: radial-gradient(circle at 50% 42%, rgba(192,132,252,.2), transparent 62%);
-}
 .vet-card-media .vet-zoom-btn {
   position: absolute;
   right: 8px; bottom: 8px;
@@ -325,32 +369,65 @@ html[data-theme="light"] .vet-section-alt { background: linear-gradient(180deg, 
   color: var(--accent);
   border: 1px solid var(--accent);
   border-radius: 8px;
-  padding: 4px 9px;
-  font-size: .7rem;
+  padding: 6px 10px;
+  font-size: .72rem;
   font-weight: 800;
-  opacity: 0;
-  transition: opacity .2s ease;
 }
-.vet-card:hover .vet-zoom-btn, .vet-card:focus-within .vet-zoom-btn { opacity: 1; }
-.vet-card-body { display: flex; flex-direction: column; gap: 6px; padding: 14px; flex: 1; }
+.vet-card-body { display: flex; flex-direction: column; gap: 6px; padding: 14px; flex: 1; min-width: 0; }
 .vet-card-cat { color: var(--accent-2); font-size: .65rem; font-weight: 900; letter-spacing: .5px; text-transform: uppercase; }
 .vet-card-title { font-size: .96rem; font-weight: 800; line-height: 1.25; }
 .vet-card-desc { color: var(--text-sub); font-size: .76rem; line-height: 1.42; }
-.vet-card-note { color: var(--text-sub); font-size: .68rem; font-style: italic; opacity: .9; }
+
+/* Acordeón desplegable de especificaciones por tarjeta */
+.vet-card-acordeon {
+  display: none;
+  margin-top: 4px;
+  padding: 9px 11px;
+  border-radius: 10px;
+  background: var(--bg-panel);
+  border: 1px dashed var(--border);
+  color: var(--text-sub);
+  font-size: .72rem;
+  line-height: 1.45;
+}
 .vet-card-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: auto; padding-top: 8px; }
-.vet-price { color: var(--accent); font-size: 1.08rem; font-weight: 900; }
+.vet-price { color: var(--accent); font-size: 1.06rem; font-weight: 900; }
 .vet-price small { color: var(--text-sub); font-size: .62rem; font-weight: 700; }
-.vet-card-actions { display: flex; gap: 6px; }
-.vet-card-actions .btn { min-height: 34px; }
+.vet-card-actions { display: flex; gap: 6px; flex-wrap: wrap; }
 .vet-empty { grid-column: 1 / -1; }
 
+/* ============================================================
+   COTIZADOR, CALCULADOR RÁPIDO Y CITAS
+   ============================================================ */
 .vet-quote-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr); gap: 20px; align-items: start; }
+.vet-calc-rapido {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 14px;
+  padding: 12px;
+  border-radius: 12px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+}
+.vet-calc-rapido .field { flex: 1; min-width: 0; }
+.vet-calc-badge {
+  text-align: right;
+  padding: 6px 10px;
+  border-radius: 10px;
+  background: var(--accent-soft);
+  border: 1px solid var(--border);
+}
+.vet-calc-badge span { display: block; font-size: .68rem; color: var(--text-sub); }
+.vet-calc-badge strong { color: var(--accent); font-size: 1.15rem; font-weight: 900; }
+
 .vet-patient-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 14px; }
 .vet-patient-grid .full { grid-column: 1 / -1; }
 .vet-cart-list { display: flex; flex-direction: column; gap: 8px; margin: 14px 0; max-height: 330px; overflow-y: auto; padding-right: 2px; }
 .vet-cart-item {
   display: grid;
-  grid-template-columns: 1fr auto auto;
+  grid-template-columns: minmax(0, 1fr) auto auto;
   gap: 10px;
   align-items: center;
   padding: 10px 12px;
@@ -358,12 +435,19 @@ html[data-theme="light"] .vet-section-alt { background: linear-gradient(180deg, 
   border-radius: var(--radius-sm);
   background: var(--bg-panel);
 }
-.vet-cart-item strong { display: block; font-size: .83rem; }
+.vet-cart-item > div { min-width: 0; }
+.vet-cart-item strong {
+  display: block;
+  font-size: .83rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 .vet-cart-item small { display: block; color: var(--text-sub); font-size: .67rem; }
 .vet-cart-item .vet-item-total { color: var(--accent); font-weight: 900; font-size: .84rem; white-space: nowrap; }
-.vet-qty { display: flex; align-items: center; gap: 4px; }
+.vet-qty { display: flex; align-items: center; gap: 6px; }
 .vet-qty button {
-  width: 26px; height: 26px;
+  width: 32px; height: 32px;
   border-radius: 7px;
   border: 1px solid var(--border);
   background: var(--bg-card);
@@ -386,11 +470,36 @@ html[data-theme="light"] .vet-section-alt { background: linear-gradient(180deg, 
 .vet-quote-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 14px; }
 .vet-cita-form { max-width: 840px; margin: 0 auto; }
 .vet-cita-form .btn { max-width: 380px; margin-left: auto; margin-right: auto; }
+.vet-alerta-box { margin-top: 10px; font-size: .84rem; font-weight: 700; }
+.vet-alerta-box .msg-exito { color: #4ade80; }
+.vet-alerta-box .msg-error { color: #f87171; }
 
+/* ============================================================
+   BITÁCORA EN VIVO Y PANEL ADMIN
+   ============================================================ */
+.vet-live-log-card { margin-bottom: 18px; }
+.vet-log-stream {
+  margin-top: 12px;
+  padding: 12px;
+  border-radius: 12px;
+  background: var(--log-bg);
+  border: 1px solid var(--border);
+  color: #e9d5ff;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: .76rem;
+  line-height: 1.55;
+  max-height: 210px;
+  overflow-y: auto;
+}
+.vet-log-stream div { padding: 3px 0; border-bottom: 1px solid rgba(255, 255, 255, .06); }
+.vet-log-stream div:last-child { border-bottom: 0; }
 .vet-kpis { margin-bottom: 18px; }
 .vet-admin-layout { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
 .vet-admin-layout .log-box { margin-top: 12px; }
 
+/* ============================================================
+   MODALES Y FOOTER
+   ============================================================ */
 .vet-detail-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 18px; }
 .vet-detail-layout .modal-media { height: 280px; }
 .vet-detail-layout .modal-media img { width: 100%; height: 280px; object-fit: cover; }
@@ -413,6 +522,9 @@ html[data-theme="light"] .vet-section-alt { background: linear-gradient(180deg, 
 .vet-footer-links a { color: var(--text-sub); font-size: .8rem; }
 .vet-footer-links a:hover { color: var(--accent); }
 
+/* ============================================================
+   RESPONSIVIDAD Y ACCESIBILIDAD TÁCTIL (44px)
+   ============================================================ */
 @media (max-width: 1080px) {
   .vet-alias-pill { display: none; }
   .vet-links { display: none; }
@@ -421,7 +533,7 @@ html[data-theme="light"] .vet-section-alt { background: linear-gradient(180deg, 
 @media (max-width: 860px) {
   .vet-hero-inner { gap: 26px; }
   .vet-hero-logo { width: 128px; height: 128px; }
-  .vet-quote-layout, .vet-admin-layout, .vet-detail-layout { grid-template-columns: 1fr; }
+  .vet-filter-bar, .vet-quote-layout, .vet-admin-layout, .vet-detail-layout { grid-template-columns: 1fr; }
   .vet-stats { grid-template-columns: repeat(2, 1fr); }
 }
 @media (max-width: 620px) {
@@ -435,7 +547,7 @@ html[data-theme="light"] .vet-section-alt { background: linear-gradient(180deg, 
   .vet-section { padding: 46px 18px; }
   .vet-section-alt { padding-left: 18px; padding-right: 18px; }
   .vet-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
-  .vet-card-media { height: 118px; }
+  .vet-card-media { height: 122px; }
   .vet-card-body { padding: 11px; }
   .vet-card-title { font-size: .85rem; }
   .vet-card-desc { display: none; }
@@ -448,4 +560,23 @@ html[data-theme="light"] .vet-section-alt { background: linear-gradient(180deg, 
 @media (max-width: 420px) {
   .vet-grid { grid-template-columns: 1fr; }
   .vet-card-media { height: 170px; }
+}
+
+@media (max-width: 900px) {
+  .btn, .btn-sm, .btn-xs { min-height: 44px; min-width: 44px; }
+  .btn-icon { width: 44px; height: 44px; min-height: 44px; }
+  .input, .select, .textarea { min-height: 44px; }
+  .vet-burger { width: 44px; height: 44px; }
+  .chip { min-height: 44px; display: inline-flex; align-items: center; }
+  .vet-cart-pill { min-height: 44px; display: inline-flex; align-items: center; }
+  .vet-qty button { width: 44px; height: 44px; }
+  .vet-card-media .vet-zoom-btn { min-height: 44px; min-width: 44px; }
+  .vet-card-actions .btn { min-height: 44px; }
+  .vet-footer-links a { min-height: 44px; display: inline-flex; align-items: center; }
+}
+
+@media (orientation: landscape) and (max-height: 500px) {
+  .vet-nav-inner { min-height: 52px; }
+  .vet-hero { padding-top: 20px; padding-bottom: 20px; }
+  .vet-section { padding-top: 30px; padding-bottom: 30px; }
 }
